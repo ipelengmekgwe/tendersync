@@ -32,6 +32,11 @@ If the architecture tests fail, fix the dependency, not the test.
 - File-scoped namespaces. One public type per file. `sealed` by default for classes that are not designed for inheritance.
 - Application is organised by feature: `Features/<Area>/<Commands|Queries>/<Name>/` holding `<Name>Command.cs` (or `Query`), `<Name>Handler.cs`, `<Name>Validator.cs`, and the response DTO. One MediatR handler per file.
 - Ports (interfaces Infrastructure implements) live in `Application/Abstractions/`. Infrastructure never exposes types to Application beyond those interfaces.
+- Persistence from Application goes through `IAppDbContext` (typed repositories + `SaveChangesAsync`) for writes and `IReadDb` (Dapper, raw SQL against the snake_case schema) for list/search queries. Application never references EF Core. Add a repository method when a handler needs a new write-side query; put read-side SQL in the handler.
+- Domain events are raised inside entities (`Raise(...)`) and become `outbox_messages` rows automatically on `SaveChangesAsync`. Never dispatch events in handlers.
+- JSON stored in jsonb columns is a `string` property named `*Json` on the entity with a typed accessor; serialise with `DomainJson`. EF cannot translate `Contains` over jsonb, so search JSON through `IReadDb` with `::text` or jsonb operators.
+- Migrations: `dotnet dotnet-ef migrations add <Name> --project src/TenderSync.Infrastructure --startup-project src/TenderSync.Api --output-dir Persistence/Migrations`. The design-time factory reads `TENDERSYNC_CONNECTION`. The `tenders.search_vector` column lives only in raw SQL inside the Initial migration; keep it out of the model.
+- Province and buyer type come from `ProvinceResolver` + the seeded `municipalities` table (`IMunicipalityLookup`); the feed has neither field.
 - Domain entities have private setters and behaviour methods (`Tender.ApplyRelease(...)`), never public property bags. Domain events are plain records in `Domain/Events/`.
 - IDs are `Guid` v7 generated in Domain. Timestamps are `DateTimeOffset` in UTC. Display in SAST only at the edge.
 - Prompts are versioned markdown under `Application/Prompts/<purpose>/v<N>.md`; a change to a prompt bumps the version and must pass its eval.

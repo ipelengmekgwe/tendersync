@@ -21,10 +21,12 @@ services:
       retries: 10
 
   seq:
-    image: datalust/seq:latest
+    image: datalust/seq:2025.2
     container_name: tendersync-seq
     environment:
       ACCEPT_EULA: "Y"
+      # Local-only log viewer. Seq 2025+ refuses to start without either an admin password or this opt-out.
+      SEQ_FIRSTRUN_NOAUTHENTICATION: ${SEQ_NO_AUTH:-True}
     ports:
       - "${SEQ_PORT:-5341}:80"
     volumes:

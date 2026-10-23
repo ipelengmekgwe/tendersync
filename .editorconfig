@@ -19,6 +19,7 @@ csharp_style_var_elsewhere = true:suggestion
 csharp_prefer_braces = true:warning
 csharp_new_line_before_open_brace = all
 dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1873.severity = none
 dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1062.severity = none
 dotnet_diagnostic.CA1031.severity = none
@@ -32,3 +33,19 @@ indent_size = 2
 
 [*.{cmd,bat,ps1}]
 end_of_line = crlf
+
+# Entity-style code: arrays/lists as persisted properties, URLs stored as strings, lower-case normalisation keys.
+[src/**.cs]
+dotnet_diagnostic.CA1002.severity = none
+dotnet_diagnostic.CA1819.severity = none
+dotnet_diagnostic.CA2227.severity = none
+dotnet_diagnostic.CA1054.severity = none
+dotnet_diagnostic.CA1055.severity = none
+dotnet_diagnostic.CA1056.severity = none
+dotnet_diagnostic.CA1308.severity = none
+dotnet_diagnostic.CA1724.severity = none
+
+# EF Core migrations are generated code.
+[src/TenderSync.Infrastructure/Persistence/Migrations/**.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
