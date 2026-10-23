@@ -1,13 +1,58 @@
-// Composition root for the TenderSync Worker. WP05 adds Hangfire server, queues, recurring jobs and the dashboard.
-var builder = WebApplication.CreateBuilder(args);
+using System.Globalization;
+using Hangfire;
+using Serilog;
+using TenderSync.Application;
+using TenderSync.Infrastructure;
+using TenderSync.Worker.Extensions;
+using TenderSync.Worker.Jobs;
 
-var app = builder.Build();
+Log.Logger = new LoggerConfiguration().WriteTo.Console(formatProvider: CultureInfo.InvariantCulture).CreateBootstrapLogger();
 
-app.MapGet("/health/live", () => Results.Ok(new { status = "ok" }));
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
 
-await app.RunAsync();
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithProperty("Application", "TenderSync.Worker"));
 
-/// <summary>Exposed for test hosting.</summary>
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddWorkerServices(builder.Configuration);
+
+    var app = builder.Build();
+
+    app.UseSerilogRequestLogging();
+    app.UseExceptionHandler();
+    app.UseStatusCodePages();
+    app.UseDashboardTokenCookie();
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapWorkerHealthEndpoints();
+    app.MapWorkerDashboard();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        JobSchedule.Register(scope.ServiceProvider.GetRequiredService<IRecurringJobManager>());
+    }
+
+    await app.RunAsync();
+}
+catch (Exception ex) when (ex is not HostAbortedException)
+{
+    Log.Fatal(ex, "TenderSync.Worker terminated unexpectedly");
+    throw;
+}
+finally
+{
+    await Log.CloseAndFlushAsync();
+}
+
+/// <summary>Exposed so WebApplicationFactory in TenderSync.Worker.Tests can host the worker.</summary>
 public partial class Program
 {
 }
