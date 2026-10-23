@@ -6,7 +6,9 @@ The full plan, architecture and work breakdown is in [PLAN.md](PLAN.md). Convent
 
 ## Status
 
-WP00 (repository bootstrap) is complete. The solution builds and tests pass, but there is no business logic yet. See PLAN.md §17 for the work packages and their order.
+WP00 (repository bootstrap) and WP01 (domain model and persistence) are complete: the domain entities, the PostgreSQL schema with its Initial migration, reference-data seeding (interest categories, municipalities, roles, first admin) and the integration test harness exist. There is no ingestion, API surface or UI yet. See PLAN.md §17 for the work packages and their order.
+
+Integration tests start a PostgreSQL 17 container through Testcontainers, so Docker must be running for `dotnet test`. Seed the first admin by setting `Seed:AdminEmail` and `Seed:AdminPassword` (user-secrets or environment); without them the seeder logs a warning and creates no user.
 
 ## Prerequisites
 
