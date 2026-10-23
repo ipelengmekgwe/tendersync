@@ -10,6 +10,8 @@ WP00 (repository bootstrap) and WP01 (domain model and persistence) are complete
 
 WP02 adds the API host: JWT login with rotating refresh tokens, role policies (Admin ⊃ Reviewer ⊃ Viewer), the MediatR pipeline (logging, authorization, validation, unit of work, audit), problem-details errors, OpenAPI with Scalar at `/scalar`, health endpoints, rate limiting on auth, and the first endpoints (`/api/v1/auth/*`, `/api/v1/tenders`, `/api/v1/admin/audit-logs`). Ingestion is still to come (WP03), so the tender list is empty on a fresh database.
 
+WP05 adds the Worker host: Hangfire on PostgreSQL (schema `hangfire`) with the `notify`, `ingest` and `pipeline` queues, the recurring-job schedule in `JobSchedule`, job-run recording, and the outbox dispatcher that turns persisted domain events into MediatR notifications every minute. The Hangfire dashboard at `http://localhost:5001/hangfire` needs an Admin JWT: open it as `/hangfire?access_token=<token>` once and the token moves into a cookie.
+
 Integration tests start a PostgreSQL 17 container through Testcontainers, so Docker must be running for `dotnet test`.
 
 ### First run
@@ -28,7 +30,9 @@ dotnet user-secrets set "Seed:AdminEmail" "you@example.com" --project src/Tender
 dotnet user-secrets set "Seed:AdminPassword" "<at least 12 characters>" --project src/TenderSync.Api
 ```
 
-In Development the API applies migrations and seeds on start (`Database:MigrateOnStartup` / `Database:SeedOnStartup` in `appsettings.Development.json`). Then sign in at `/scalar` with `POST /api/v1/auth/login` and paste the access token into Authorize.
+The Worker needs the same `Jwt:SigningKey` (its own user-secrets id is `tendersync-worker`) so dashboard tokens issued by the API validate there.
+
+In Development the API applies migrations and seeds on start (`Database:MigrateOnStartup` / `Database:SeedOnStartup` in `appsettings.Development.json`); the Worker never migrates, so start the API once before the Worker on a fresh database. Then sign in at `/scalar` with `POST /api/v1/auth/login` and paste the access token into Authorize.
 
 ## Prerequisites
 

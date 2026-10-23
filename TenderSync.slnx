@@ -20,9 +20,11 @@
   <Folder Name="/Solution Items/.github/workflows/">
     <File Path=".github/workflows/ci.yml" />
   </Folder>
+  <Folder Name="/Solution Items/deploy/" />
   <Folder Name="/Solution Items/deploy/docker/">
     <File Path="deploy/docker/docker-compose.yml" />
   </Folder>
+  <Folder Name="/Solution Items/docs/" />
   <Folder Name="/Solution Items/docs/adr/">
     <File Path="docs/adr/0001-backend-platform.md" />
     <File Path="docs/adr/0002-clean-architecture-cqrs.md" />
@@ -44,6 +46,7 @@
     <File Path="docs/adr/0018-testing.md" />
     <File Path="docs/adr/0019-package-versions.md" />
   </Folder>
+  <Folder Name="/Solution Items/docs/research/" />
   <Folder Name="/Solution Items/docs/research/etenders-samples/">
     <File Path="docs/research/etenders-samples/releases-2026-10-23-page1-size100.json" />
     <File Path="docs/research/etenders-samples/releases-size3.json" />
@@ -63,5 +66,6 @@
     <Project Path="tests/TenderSync.Domain.Tests/TenderSync.Domain.Tests.csproj" />
     <Project Path="tests/TenderSync.Evals/TenderSync.Evals.csproj" />
     <Project Path="tests/TenderSync.Infrastructure.Tests/TenderSync.Infrastructure.Tests.csproj" />
+    <Project Path="tests/TenderSync.Worker.Tests/TenderSync.Worker.Tests.csproj" />
   </Folder>
 </Solution>

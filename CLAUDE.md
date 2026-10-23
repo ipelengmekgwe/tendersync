@@ -42,6 +42,10 @@ If the architecture tests fail, fix the dependency, not the test.
 - Read configuration lazily (inside options lambdas or factories), never at registration time: `WebApplicationFactory` adds its overrides after `Program.cs` has registered services, and eager reads make tests hit the Compose database on port 5432.
 - Minimal-API query binding treats non-nullable value-type parameters and `[AsParameters]` properties as required. Optional filters must be nullable and defaulted in the mapping.
 - Endpoints live in `Api/Endpoints/<Area>Endpoints.cs` as `Map<Area>Endpoints` extension methods; groups set the tag and the authorization policy (`Policies.Viewer/Reviewer/Admin`).
+- Background jobs are classes in `Worker/Jobs/` with one `ExecuteAsync(CancellationToken)` method, a `[Queue]` attribute from `JobQueues`, and a body wrapped in `JobRunner.RunAsync` so every run lands in `job_runs`. Register the class as scoped in `AddWorkerServices` and the schedule in `JobSchedule.Register` (cron in SAST). Jobs call Application services (`OutboxProcessor` style); logic never lives in the job class.
+- React to domain events with `INotificationHandler<DomainEventNotification<TEvent>>` in `Application/Features/<Area>/EventHandlers/`. The outbox job publishes them; handlers must be idempotent because a failed batch is retried.
+- Worker tests set `Hangfire:ServerEnabled=false` and invoke job classes directly from a scope; never rely on the Hangfire server firing in a test.
+- `NpgsqlDataSource.ConnectionString` strips the password. Anything that needs a raw connection string (Hangfire storage) reads it from `IConfiguration` at resolve time.
 - Domain entities have private setters and behaviour methods (`Tender.ApplyRelease(...)`), never public property bags. Domain events are plain records in `Domain/Events/`.
 - IDs are `Guid` v7 generated in Domain. Timestamps are `DateTimeOffset` in UTC. Display in SAST only at the edge.
 - Prompts are versioned markdown under `Application/Prompts/<purpose>/v<N>.md`; a change to a prompt bumps the version and must pass its eval.
