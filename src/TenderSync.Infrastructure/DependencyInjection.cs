@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using TenderSync.Application.Abstractions;
+using TenderSync.Application.Abstractions.Identity;
 using TenderSync.Application.Abstractions.Persistence;
 using TenderSync.Infrastructure.Identity;
 using TenderSync.Infrastructure.Persistence;
@@ -18,17 +19,24 @@ public static class DependencyInjection
     public const string ConnectionStringName = "TenderSync";
 
     /// <summary>Registers persistence (EF Core + Dapper), Identity stores, the clock, the municipality lookup and the seeder.</summary>
+    /// <summary>
+    /// Host registration. The connection string is read when the data source is first resolved, not here, so test hosts
+    /// that add configuration after registration (WebApplicationFactory) still get their own database.
+    /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString(ConnectionStringName)
-            ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured.");
-
-        return services.AddInfrastructure(connectionString, configuration);
+        return services.AddInfrastructure(
+            () => configuration.GetConnectionString(ConnectionStringName)
+                ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured."),
+            configuration);
     }
 
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, IConfiguration? configuration = null)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString, IConfiguration? configuration = null) =>
+        services.AddInfrastructure(() => connectionString, configuration);
+
+    private static IServiceCollection AddInfrastructure(this IServiceCollection services, Func<string> connectionString, IConfiguration? configuration)
     {
-        services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connectionString).Build());
+        services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connectionString()).Build());
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddSingleton<IMunicipalityLookup, CachedMunicipalityLookup>();
         services.AddScoped<AuditAndOutboxInterceptor>();
@@ -42,14 +50,18 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IReadDb, DapperReadDb>();
         services.AddScoped<DatabaseSeeder>();
+        services.AddScoped<IIdentityService, IdentityService>();
+        services.AddScoped<ITokenService, JwtTokenService>();
 
         if (configuration is not null)
         {
             services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
+            services.AddOptions<JwtOptions>().Bind(configuration.GetSection(JwtOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
         }
         else
         {
             services.AddOptions<SeedOptions>();
+            services.AddOptions<JwtOptions>();
         }
 
         services.AddIdentityCore<ApplicationUser>(identity =>

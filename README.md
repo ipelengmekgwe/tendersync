@@ -8,7 +8,27 @@ The full plan, architecture and work breakdown is in [PLAN.md](PLAN.md). Convent
 
 WP00 (repository bootstrap) and WP01 (domain model and persistence) are complete: the domain entities, the PostgreSQL schema with its Initial migration, reference-data seeding (interest categories, municipalities, roles, first admin) and the integration test harness exist. There is no ingestion, API surface or UI yet. See PLAN.md §17 for the work packages and their order.
 
-Integration tests start a PostgreSQL 17 container through Testcontainers, so Docker must be running for `dotnet test`. Seed the first admin by setting `Seed:AdminEmail` and `Seed:AdminPassword` (user-secrets or environment); without them the seeder logs a warning and creates no user.
+WP02 adds the API host: JWT login with rotating refresh tokens, role policies (Admin ⊃ Reviewer ⊃ Viewer), the MediatR pipeline (logging, authorization, validation, unit of work, audit), problem-details errors, OpenAPI with Scalar at `/scalar`, health endpoints, rate limiting on auth, and the first endpoints (`/api/v1/auth/*`, `/api/v1/tenders`, `/api/v1/admin/audit-logs`). Ingestion is still to come (WP03), so the tender list is empty on a fresh database.
+
+Integration tests start a PostgreSQL 17 container through Testcontainers, so Docker must be running for `dotnet test`.
+
+### First run
+
+The API refuses to start without a JWT signing key, and creates no user unless seed credentials are set. Put both in user-secrets (never in appsettings):
+
+```bash
+dotnet user-secrets set "Jwt:SigningKey" "<at least 32 random characters>" --project src/TenderSync.Api
+```
+
+```bash
+dotnet user-secrets set "Seed:AdminEmail" "you@example.com" --project src/TenderSync.Api
+```
+
+```bash
+dotnet user-secrets set "Seed:AdminPassword" "<at least 12 characters>" --project src/TenderSync.Api
+```
+
+In Development the API applies migrations and seeds on start (`Database:MigrateOnStartup` / `Database:SeedOnStartup` in `appsettings.Development.json`). Then sign in at `/scalar` with `POST /api/v1/auth/login` and paste the access token into Authorize.
 
 ## Prerequisites
 

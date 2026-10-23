@@ -89,6 +89,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<Municipality> MunicipalitySet => Set<Municipality>();
 
+    public DbSet<RefreshToken> RefreshTokenSet => Set<RefreshToken>();
+
     public ITenderRepository Tenders => _tenders ??= new TenderRepository(this);
 
     public IBuyerRepository Buyers => _buyers ??= new BuyerRepository(this);
