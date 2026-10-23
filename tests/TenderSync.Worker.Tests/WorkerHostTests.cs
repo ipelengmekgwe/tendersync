@@ -41,15 +41,17 @@ public class WorkerHostTests(WorkerFactory factory)
     }
 
     [Fact]
-    public void Triggered_outbox_job_lands_on_the_notify_queue()
+    public void Enqueued_outbox_job_lands_on_the_notify_queue()
     {
-        var manager = factory.Services.GetRequiredService<IRecurringJobManager>();
+        var client = factory.Services.GetRequiredService<IBackgroundJobClient>();
         var monitoring = factory.Services.GetRequiredService<JobStorage>().GetMonitoringApi();
         var before = monitoring.EnqueuedCount(JobQueues.Notify);
 
-        // The server is disabled in tests, so the job stays enqueued where the [Queue] attribute routed it.
-        manager.Trigger(ProcessOutboxJob.RecurringId);
+        // Enqueue is synchronous (RecurringJobManager.Trigger is not on every storage), and the server is disabled in tests,
+        // so the job stays exactly where the [Queue] attribute routed it.
+        var jobId = client.Enqueue<ProcessOutboxJob>(job => job.ExecuteAsync(CancellationToken.None));
 
+        jobId.Should().NotBeNullOrEmpty();
         monitoring.EnqueuedCount(JobQueues.Notify).Should().Be(before + 1);
         monitoring.EnqueuedCount(JobQueues.Default).Should().Be(0, "nothing should fall through to the default queue");
     }
