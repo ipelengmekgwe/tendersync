@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Shared API DTO types. Optional; used by OpenAPI generation only. References nothing. -->
+</Project>

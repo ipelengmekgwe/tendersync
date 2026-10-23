@@ -1,0 +1,228 @@
+I want you to act as a Senior Software Architect and Full Stack Engineer.
+
+Design and generate a complete production-ready application that monitors South African government tenders from the eTenders portal (API):
+
+
+The eTenders portal provides search and filtering capabilities for active public-sector tenders.
+
+Objective
+
+Build a system that:
+
+Automatically scans the eTenders website API.
+Identifies tenders related to (Configurable):
+-Software Development
+-Web Development
+-Mobile Development
+-Application Support
+-System Integration
+-Cloud Services
+-AI / Machine Learning
+-Data Analytics
+-Business Intelligence
+-IT Consulting
+-Software Maintenance
+-DevOps
+-Cyber Security
+-Database Development
+Downloads and stores tender information.
+Notifies me immediately when a matching tender is found.
+Maintains a database of previously discovered tenders.
+Prevents duplicate notifications.
+Tracks tender status changes.
+Tracks closing dates and sends reminders.
+Advanced Requirement
+
+The system should support "Auto Apply" mode.
+
+I will maintain a company profile containing:
+
+Company details
+Registration documents
+CSD number
+Tax pin
+B-BBEE certificate
+Company profile
+References
+Team CVs
+Certifications
+Pricing templates
+Standard proposal templates
+
+When a tender is found:
+
+Phase 1 – Qualification
+
+Automatically determine:
+
+Do we qualify?
+Which mandatory requirements are missing?
+What functionality score could we likely achieve?
+What documents are required?
+
+Generate a qualification report.
+
+Phase 2 – Proposal Generation
+
+If we qualify:
+
+Automatically generate:
+
+Executive summary
+Methodology
+Technical proposal
+Company experience section
+Resource section
+Compliance matrix
+Risk section
+Pricing schedule (if possible)
+
+Output:
+
+Word document
+PDF
+Excel pricing sheets
+Phase 3 – Human Review
+
+Before submission:
+
+Generate a checklist showing:
+
+Missing documents
+Missing signatures
+Missing information
+Risks
+Questions requiring human input
+
+Send notification via:
+
+Email
+Telegram
+WhatsApp (if supported)
+Microsoft Teams
+Phase 4 – Submission
+
+If the portal supports electronic submissions and all required information is available:
+
+Allow automatic submission.
+
+If automatic submission is not possible:
+
+Prepare the full submission package and notify me.
+
+Technical Requirements
+Backend
+
+Use:
+
+.NET 10 (must be LTS)
+Clean Architecture
+CQRS
+MediatR (last free version before commertializing)
+FluentValidation
+Mapster
+Entity Framework Core/Dapper
+SQL Server or PostgreSQL/No sql/both
+Scraping
+Hangfire/Qaurtz
+API Documentation (Scalar)
+Logging
+Service broker/MassTransit (if needed)
+polly
+
+Use:
+
+Playwright
+
+Requirements:
+
+Handle dynamic content
+Handle pagination
+Handle document downloads
+Retry on failures
+Respect robots.txt and website terms of use
+Detect site layout changes
+Database
+
+Create tables for:
+
+Tenders
+TenderDocuments
+Notifications
+Applications
+ApplicationDocuments
+CompanyProfiles
+TenderRequirements
+TenderMatches
+AuditLogs
+AI Layer
+
+Use OpenAI-compatible APIs.
+
+Features:
+
+Tender classification
+Requirement extraction
+Compliance scoring
+Proposal generation
+Missing-document detection
+Tender relevance scoring
+Dashboard
+
+Create a web application that shows:
+This can be Next.js or Blazor
+
+New tenders
+Applied tenders
+Closing soon
+Qualification score
+Missing documentation
+Generated proposals
+Submission status
+Notification System
+
+Support:
+
+Email
+Telegram
+Microsoft Teams
+SMS abstraction layer
+Security
+Encrypt sensitive documents
+Secure API keys
+Role-based access
+Audit logging
+Deliverables
+
+Generate:
+
+Complete solution architecture.
+Folder structure.
+Database schema.
+Entity models.
+API endpoints.
+Playwright scraper implementation.
+Background worker service.
+AI integration layer.
+Notification layer.
+Dashboard UI.
+Docker deployment.
+Azure deployment option.
+CI/CD pipeline.
+Unit tests.
+Integration tests.
+Sequence diagrams.
+Class diagrams.
+Important
+
+Before implementing auto-apply functionality:
+
+Evaluate whether the eTenders portal supports automated submissions.
+Identify any legal, contractual, authentication, CAPTCHA, or terms-of-service restrictions.
+If automated submission is not permitted or technically feasible, design the system to stop at "submission-ready package generation" and require human approval.
+
+Provide production-quality code, architecture decisions, assumptions, and implementation steps.
+
+Build Phase 1 (monitoring + qualification + notifications) first. That delivers 80% of the value and is relatively straightforward.
+
+Contenders: tenderflow.co.za

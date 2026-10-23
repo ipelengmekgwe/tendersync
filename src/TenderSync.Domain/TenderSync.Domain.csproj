@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domain references nothing. Entities, value objects, enums, domain events and rules only. -->
+</Project>

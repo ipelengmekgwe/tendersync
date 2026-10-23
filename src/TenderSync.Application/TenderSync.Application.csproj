@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Application references Domain only, plus MediatR / FluentValidation / Mapster abstractions. -->
+  <ItemGroup>
+    <ProjectReference Include="../TenderSync.Domain/TenderSync.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Mapster" />
+    <PackageReference Include="Mapster.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Scriban" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Prompts/**/*.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Notifications/Templates/**/*.sbn" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

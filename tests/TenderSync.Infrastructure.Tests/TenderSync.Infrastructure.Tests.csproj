@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/TenderSync.Domain/TenderSync.Domain.csproj" />
+    <ProjectReference Include="../../src/TenderSync.Application/TenderSync.Application.csproj" />
+    <ProjectReference Include="../../src/TenderSync.Infrastructure/TenderSync.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+</Project>

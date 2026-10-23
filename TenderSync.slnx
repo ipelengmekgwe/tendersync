@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TenderSync.Api/TenderSync.Api.csproj" />
+    <Project Path="src/TenderSync.Application/TenderSync.Application.csproj" />
+    <Project Path="src/TenderSync.Contracts/TenderSync.Contracts.csproj" />
+    <Project Path="src/TenderSync.Domain/TenderSync.Domain.csproj" />
+    <Project Path="src/TenderSync.Infrastructure/TenderSync.Infrastructure.csproj" />
+    <Project Path="src/TenderSync.Worker/TenderSync.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TenderSync.Api.Tests/TenderSync.Api.Tests.csproj" />
+    <Project Path="tests/TenderSync.Application.Tests/TenderSync.Application.Tests.csproj" />
+    <Project Path="tests/TenderSync.Architecture.Tests/TenderSync.Architecture.Tests.csproj" />
+    <Project Path="tests/TenderSync.Domain.Tests/TenderSync.Domain.Tests.csproj" />
+    <Project Path="tests/TenderSync.Evals/TenderSync.Evals.csproj" />
+    <Project Path="tests/TenderSync.Infrastructure.Tests/TenderSync.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

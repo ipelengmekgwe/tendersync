@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/TenderSync.Domain/TenderSync.Domain.csproj" />
+    <ProjectReference Include="../../src/TenderSync.Application/TenderSync.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Verify.Xunit" />
+  </ItemGroup>
+</Project>

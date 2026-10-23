@@ -1,0 +1,35 @@
+# Local infrastructure for TenderSync. The api, worker and web services are added in WP15.
+# Usage: docker compose -f deploy/docker/docker-compose.yml up -d
+name: tendersync
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: tendersync-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tendersync}
+      POSTGRES_USER: ${POSTGRES_USER:-tendersync}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tendersync}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tendersync} -d ${POSTGRES_DB:-tendersync}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  seq:
+    image: datalust/seq:latest
+    container_name: tendersync-seq
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "${SEQ_PORT:-5341}:80"
+    volumes:
+      - seq-data:/data
+
+volumes:
+  postgres-data:
+  seq-data:

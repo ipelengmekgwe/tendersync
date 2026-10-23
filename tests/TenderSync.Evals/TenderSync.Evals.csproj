@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Opt-in LLM golden-set evaluations. Needs a provider API key; skipped when absent. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/TenderSync.Domain/TenderSync.Domain.csproj" />
+    <ProjectReference Include="../../src/TenderSync.Application/TenderSync.Application.csproj" />
+    <ProjectReference Include="../../src/TenderSync.Infrastructure/TenderSync.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
