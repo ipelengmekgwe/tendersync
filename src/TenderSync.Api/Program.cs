@@ -5,6 +5,7 @@ using TenderSync.Api.Endpoints;
 using TenderSync.Api.Extensions;
 using TenderSync.Application;
 using TenderSync.Infrastructure;
+using TenderSync.Infrastructure.Identity;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console(formatProvider: CultureInfo.InvariantCulture).CreateBootstrapLogger();
 
@@ -27,7 +28,16 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApiServices(builder.Configuration);
 
+    // DevAuth:AllowAnyCredentials is a local testing shortcut and must never survive outside Development, whatever the config says.
+    var isDevelopment = builder.Environment.IsDevelopment();
+    builder.Services.PostConfigure<DevAuthOptions>(options => options.AllowAnyCredentials = options.AllowAnyCredentials && isDevelopment);
+
     var app = builder.Build();
+
+    if (app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<DevAuthOptions>>().Value.AllowAnyCredentials)
+    {
+        Log.Warning("DevAuth:AllowAnyCredentials is on: any email and password sign in as Admin. Development only; set DevAuth:AllowAnyCredentials=false to restore real sign-in");
+    }
 
     app.UseSerilogRequestLogging();
     app.UseExceptionHandler();

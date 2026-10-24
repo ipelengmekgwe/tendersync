@@ -66,11 +66,13 @@ public static class DependencyInjection
         if (configuration is not null)
         {
             services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
+            services.Configure<DevAuthOptions>(configuration.GetSection(DevAuthOptions.SectionName));
             services.AddOptions<JwtOptions>().Bind(configuration.GetSection(JwtOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
         }
         else
         {
             services.AddOptions<SeedOptions>();
+            services.AddOptions<DevAuthOptions>();
             services.AddOptions<JwtOptions>();
         }
 

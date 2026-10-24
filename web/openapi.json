@@ -1,0 +1,4545 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "TenderSync API",
+    "description": "Monitors South African eTenders, extracts bid-pack requirements and scores qualification. Data: National Treasury eTenders (PDDL). Verify in the original bid document.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Exchange email and password for an access token and a refresh token.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Rotate a refresh token. The old token is revoked; reusing it revokes the whole family.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Revoke a refresh token.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "The authenticated user and roles.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders": {
+      "get": {
+        "tags": [
+          "Tenders"
+        ],
+        "summary": "Paged tender list with full-text search and filters.",
+        "parameters": [
+          {
+            "name": "Q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TenderStatus"
+            }
+          },
+          {
+            "name": "Province",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Province"
+            }
+          },
+          {
+            "name": "BuyerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ClosingFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "ClosingTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "MatchedOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "NearMisses",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "MinRelevance",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TenderSort"
+            }
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfTenderListItemDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}": {
+      "get": {
+        "tags": [
+          "Tenders"
+        ],
+        "summary": "Tender detail with buyer, documents, classification and status history.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenderDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/reclassify": {
+      "post": {
+        "tags": [
+          "Tenders"
+        ],
+        "summary": "Runs the keyword prefilter and the model classification again and returns the outcome. Reviewer or Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "prefilterOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationOutcome"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/requirements": {
+      "get": {
+        "tags": [
+          "Tenders"
+        ],
+        "summary": "Extracted requirements grouped by kind, each with its source document, page, quote and verify flag.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenderRequirementsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/extract": {
+      "post": {
+        "tags": [
+          "Tenders"
+        ],
+        "summary": "Queues requirement extraction (and any outstanding document downloads first). Reviewer or Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestExtractionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/qualification": {
+      "get": {
+        "tags": [
+          "Tenders"
+        ],
+        "summary": "The newest qualification report (can we bid?): verdict, score, findings with sources, missing items, questions for a human and the markdown with its disclaimer. 404 until a run has completed.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "companyProfileId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualificationReportDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/qualify": {
+      "post": {
+        "tags": [
+          "Tenders"
+        ],
+        "summary": "Queues a qualification run for one profile (companyProfileId) or every matched profile. Needs extracted requirements (409 otherwise). Reviewer or Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "companyProfileId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestQualificationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/documents": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Documents of a tender with their download and extraction state.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenderDocumentDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/documents/{docId}/download": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Streams the stored copy of a document. 409 when it has not been downloaded yet; the response then names the original URL.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "docId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/documents/{docId}/text": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Extracted text per page (empty until the extraction job has run).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "docId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTextDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/documents/download": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Queues the download and extraction of every document not yet stored. Reviewer or Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDocumentDownloadResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/interest-categories/test": {
+      "post": {
+        "tags": [
+          "Interest categories"
+        ],
+        "summary": "Dry-runs the keyword prefilter against the enabled categories for a stored tender (tenderId) or free text.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestInterestCategoriesQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrefilterResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profiles": {
+      "get": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Company profiles (active ones unless includeInactive=true).",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CompanyProfileListItemDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Creates a profile. Admin.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyProfileInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profiles/{id}": {
+      "get": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "A profile with its compliance data (tax PIN masked), capabilities and document count.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Replaces every editable section of the profile. Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyProfileInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfileDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Deactivates a profile (matches and reports keep referencing it). Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profiles/{id}/activate": {
+      "post": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Reactivates a profile. Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profiles/{id}/documents": {
+      "get": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "The company's document library with expiry flags and the master key each entry is wrapped with.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CompanyDocumentDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Uploads a document (multipart: file, type, title, expiresAt). Encrypted with a per-file key before it reaches the store. Reviewer or Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "File": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "Type": {
+                        "$ref": "#/components/schemas/CompanyDocumentType"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "Title": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "ExpiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyDocumentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profiles/{id}/documents/{docId}/download": {
+      "get": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Streams the decrypted document. Every download is written to the audit log. Reviewer or Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "docId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profiles/{id}/documents/{docId}": {
+      "put": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Renames a document or changes its expiry. Reviewer or Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "docId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyDocumentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Company profiles"
+        ],
+        "summary": "Soft-deletes a document; the encrypted blob is kept. Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "docId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Messages sent (or queued) to any of the caller's preference addresses, newest first.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/NotificationStatus"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/NotificationType"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfNotificationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/test": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Queues a test message to the caller's address on the channel; the Worker delivers it within about a minute.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestNotificationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification-preferences": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "The caller's channel subscriptions.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationPreferenceDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Replaces the caller's subscriptions: one entry per channel with address, types, enabled flag and optional quiet hours. Channels left out are removed.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/NotificationPreferenceInput"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationPreferenceDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit-logs": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Audit log of every command, newest first.",
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfAuditLogDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/source-health": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Latest reachability, latency and schema-drift probes of the tender sources.",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SourceHealthDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/jobs/runs": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Background job runs, newest first, with per-run details such as ingest summaries.",
+        "parameters": [
+          {
+            "name": "jobName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfJobRunDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/llm-calls": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Model spend: totals by day, purpose and model for a window (default 30 days), today's spend against the cap, and the latest calls.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "purpose",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recent",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmCallsSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/encryption/rewrap": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Master-key rotation: re-wraps every company document's data key with the active key (docs/runbooks/key-rotation.md).",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewrapResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuditLogDto": {
+        "required": [
+          "id",
+          "actorUserId",
+          "actorName",
+          "action",
+          "entityType",
+          "entityId",
+          "afterJson",
+          "ip",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "afterJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ip": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AuthResponse": {
+        "required": [
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "refreshTokenExpiresAt",
+          "user"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "refreshTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserDto"
+          }
+        }
+      },
+      "BuyerType": {
+        "type": "integer"
+      },
+      "CategoryScore": {
+        "required": [
+          "code",
+          "score",
+          "hits",
+          "negativeHits"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeywordHit"
+            }
+          },
+          "negativeHits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeywordHit"
+            }
+          }
+        }
+      },
+      "ClassificationOutcome": {
+        "required": [
+          "tenderId",
+          "ocid",
+          "stage",
+          "candidate",
+          "categoryCodes",
+          "relevance",
+          "isNearMiss",
+          "matchesCreated",
+          "matchesUpdated",
+          "costUsd",
+          "reason",
+          "redFlags"
+        ],
+        "type": "object",
+        "properties": {
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ocid": {
+            "type": "string"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/ClassificationStage"
+          },
+          "candidate": {
+            "type": "boolean"
+          },
+          "categoryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relevance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isNearMiss": {
+            "type": "boolean"
+          },
+          "matchesCreated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matchesUpdated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "costUsd": {
+            "type": "number",
+            "format": "double"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "redFlags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ClassificationStage": {
+        "type": "integer"
+      },
+      "CompanyCapabilities": {
+        "type": "object",
+        "properties": {
+          "categoryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "industries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "certifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompanyCertification"
+            }
+          },
+          "keyPersonnel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeyPerson"
+            }
+          },
+          "referenceProjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferenceProject"
+            }
+          }
+        }
+      },
+      "CompanyCertification": {
+        "required": [
+          "name",
+          "issuer",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "CompanyDocumentDto": {
+        "required": [
+          "id",
+          "companyProfileId",
+          "type",
+          "title",
+          "contentType",
+          "sizeBytes",
+          "sha256",
+          "expiresAt",
+          "isExpired",
+          "expiresWithin30Days",
+          "masterKeyId",
+          "deletedAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyProfileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/CompanyDocumentType"
+          },
+          "title": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "isExpired": {
+            "type": "boolean"
+          },
+          "expiresWithin30Days": {
+            "type": "boolean"
+          },
+          "masterKeyId": {
+            "type": "string"
+          },
+          "deletedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CompanyDocumentType": {
+        "type": "integer"
+      },
+      "CompanyProfileDto": {
+        "required": [
+          "id",
+          "name",
+          "tradingName",
+          "registrationNumber",
+          "vatNumber",
+          "yearsTrading",
+          "employeeCount",
+          "annualTurnover",
+          "csdNumber",
+          "csdExpiry",
+          "taxPinMasked",
+          "taxPinExpiry",
+          "bbbeeLevel",
+          "bbbeeExpiry",
+          "bbbeeCertificateType",
+          "cidbGrade",
+          "cidbClasses",
+          "provinces",
+          "capabilities",
+          "contactJson",
+          "addressJson",
+          "isActive",
+          "shareKeyPersonnelWithModel",
+          "documentCount",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tradingName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "registrationNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "vatNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "yearsTrading": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "employeeCount": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "annualTurnover": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "csdNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "csdExpiry": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "taxPinMasked": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxPinExpiry": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "bbbeeLevel": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "bbbeeExpiry": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "bbbeeCertificateType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cidbGrade": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "cidbClasses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provinces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Province"
+            }
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/CompanyCapabilities"
+          },
+          "contactJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "addressJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "shareKeyPersonnelWithModel": {
+            "type": "boolean"
+          },
+          "documentCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CompanyProfileInput": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tradingName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "registrationNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "vatNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "yearsTrading": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "employeeCount": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "annualTurnover": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "csdNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "csdExpiry": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "taxPin": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "taxPinExpiry": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "bbbeeLevel": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "bbbeeExpiry": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "bbbeeCertificateType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cidbGrade": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "cidbClasses": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "provinces": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Province"
+            }
+          },
+          "capabilities": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CompanyCapabilities"
+              }
+            ]
+          },
+          "contactJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "addressJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "shareKeyPersonnelWithModel": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "CompanyProfileListItemDto": {
+        "required": [
+          "id",
+          "name",
+          "registrationNumber",
+          "isActive",
+          "yearsTrading",
+          "categoryCodes",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "registrationNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "yearsTrading": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "categoryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DocumentPageTextDto": {
+        "required": [
+          "page",
+          "charCount",
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "charCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "DocumentStatus": {
+        "type": "integer"
+      },
+      "DocumentTextDto": {
+        "required": [
+          "documentId",
+          "status",
+          "needsOcr",
+          "pageCount",
+          "charCount",
+          "pages"
+        ],
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          },
+          "needsOcr": {
+            "type": "boolean"
+          },
+          "pageCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "charCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentPageTextDto"
+            }
+          }
+        }
+      },
+      "FindingOutcome": {
+        "type": "integer"
+      },
+      "FunctionalityScore": {
+        "required": [
+          "criterion",
+          "weight",
+          "estimated",
+          "reasoning",
+          "confidence"
+        ],
+        "type": "object",
+        "properties": {
+          "criterion": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double"
+          },
+          "estimated": {
+            "type": "number",
+            "format": "double"
+          },
+          "reasoning": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "HttpValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "HumanQuestion": {
+        "required": [
+          "question",
+          "reason",
+          "requirementId"
+        ],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requirementId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "JobRunDto": {
+        "required": [
+          "id",
+          "jobName",
+          "startedAt",
+          "finishedAt",
+          "success",
+          "itemsProcessed",
+          "error",
+          "detailsJson"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobName": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "success": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "itemsProcessed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "detailsJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "KeyPerson": {
+        "required": [
+          "name",
+          "role",
+          "yearsExperience",
+          "summary"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "yearsExperience": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "KeywordHit": {
+        "required": [
+          "keyword",
+          "field",
+          "weight"
+        ],
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "LlmCallDto": {
+        "required": [
+          "id",
+          "at",
+          "purpose",
+          "provider",
+          "model",
+          "promptVersion",
+          "tenderId",
+          "tokensIn",
+          "tokensOut",
+          "cacheReadTokens",
+          "costUsd",
+          "durationMs",
+          "success",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "promptVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tenderId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "tokensIn": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tokensOut": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cacheReadTokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "costUsd": {
+            "type": "number",
+            "format": "double"
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "LlmCallsBucketDto": {
+        "required": [
+          "key",
+          "calls",
+          "failed",
+          "tokensIn",
+          "tokensOut",
+          "cacheRead",
+          "costUsd"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tokensIn": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tokensOut": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cacheRead": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "costUsd": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "LlmCallsSummaryDto": {
+        "required": [
+          "from",
+          "to",
+          "calls",
+          "failed",
+          "tokensIn",
+          "tokensOut",
+          "cacheRead",
+          "costUsd",
+          "spentTodayUsd",
+          "dailyCapUsd",
+          "byDay",
+          "byPurpose",
+          "byModel",
+          "recent"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "calls": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tokensIn": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tokensOut": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cacheRead": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "costUsd": {
+            "type": "number",
+            "format": "double"
+          },
+          "spentTodayUsd": {
+            "type": "number",
+            "format": "double"
+          },
+          "dailyCapUsd": {
+            "type": "number",
+            "format": "double"
+          },
+          "byDay": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LlmCallsBucketDto"
+            }
+          },
+          "byPurpose": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LlmCallsBucketDto"
+            }
+          },
+          "byModel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LlmCallsBucketDto"
+            }
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LlmCallDto"
+            }
+          }
+        }
+      },
+      "LoginCommand": {
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "LogoutCommand": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "MatchStatus": {
+        "type": "integer"
+      },
+      "MissingItem": {
+        "required": [
+          "name",
+          "formCode",
+          "reason",
+          "requirementId"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "formCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requirementId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "NotificationChannel": {
+        "type": "integer"
+      },
+      "NotificationDto": {
+        "required": [
+          "id",
+          "type",
+          "channel",
+          "recipient",
+          "subject",
+          "body",
+          "status",
+          "attempts",
+          "sentAt",
+          "notBefore",
+          "error",
+          "tenderId",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/NotificationType"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/NotificationStatus"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sentAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "notBefore": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tenderId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NotificationPreferenceDto": {
+        "required": [
+          "id",
+          "channel",
+          "address",
+          "types",
+          "enabled",
+          "quietHours",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel"
+          },
+          "address": {
+            "type": "string"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationType"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "quietHours": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QuietHoursInput"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NotificationPreferenceInput": {
+        "required": [
+          "channel",
+          "address",
+          "types"
+        ],
+        "type": "object",
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel"
+          },
+          "address": {
+            "type": "string"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationType"
+            }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "quietHours": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QuietHoursInput"
+              }
+            ]
+          }
+        }
+      },
+      "NotificationStatus": {
+        "type": "integer"
+      },
+      "NotificationType": {
+        "type": "integer"
+      },
+      "PagedResultOfAuditLogDto": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfJobRunDto": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobRunDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfNotificationDto": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfTenderListItemDto": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenderListItemDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PrefilterResult": {
+        "required": [
+          "isCandidate",
+          "reason",
+          "scores",
+          "globalNegativeHits",
+          "methodRuleApplied"
+        ],
+        "type": "object",
+        "properties": {
+          "isCandidate": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryScore"
+            }
+          },
+          "globalNegativeHits": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "methodRuleApplied": {
+            "type": "boolean"
+          },
+          "candidateCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ProcurementCategory": {
+        "type": "integer"
+      },
+      "Province": {
+        "type": "integer"
+      },
+      "QualificationFinding": {
+        "required": [
+          "requirementId",
+          "type",
+          "requirement",
+          "outcome",
+          "detail",
+          "confidence"
+        ],
+        "type": "object",
+        "properties": {
+          "requirementId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/RequirementType"
+          },
+          "requirement": {
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/FindingOutcome"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "QualificationReportDto": {
+        "required": [
+          "id",
+          "tenderId",
+          "companyProfileId",
+          "companyName",
+          "verdict",
+          "score",
+          "estimatedFunctionalityScore",
+          "findings",
+          "missingMandatory",
+          "missingDocuments",
+          "functionalityBreakdown",
+          "questions",
+          "summaryMarkdown",
+          "model",
+          "promptVersion",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyProfileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/QualificationVerdict"
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estimatedFunctionalityScore": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QualificationFinding"
+            }
+          },
+          "missingMandatory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingItem"
+            }
+          },
+          "missingDocuments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingItem"
+            }
+          },
+          "functionalityBreakdown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FunctionalityScore"
+            }
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HumanQuestion"
+            }
+          },
+          "summaryMarkdown": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "promptVersion": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "QualificationVerdict": {
+        "type": "integer"
+      },
+      "QuietHoursInput": {
+        "required": [
+          "start",
+          "end"
+        ],
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReferenceProject": {
+        "required": [
+          "client",
+          "scope",
+          "value",
+          "year",
+          "contactable"
+        ],
+        "type": "object",
+        "properties": {
+          "client": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "year": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "contactable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RefreshTokenCommand": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "RequestDocumentDownloadResponse": {
+        "required": [
+          "tenderId",
+          "queuedDocuments",
+          "totalDocuments"
+        ],
+        "type": "object",
+        "properties": {
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "queuedDocuments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalDocuments": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "RequestExtractionResponse": {
+        "required": [
+          "tenderId",
+          "documentsWithText",
+          "documentsQueuedForDownload",
+          "extractionQueued"
+        ],
+        "type": "object",
+        "properties": {
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentsWithText": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "documentsQueuedForDownload": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "extractionQueued": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RequestQualificationResponse": {
+        "required": [
+          "tenderId",
+          "companyProfileId",
+          "requirementCount",
+          "queued"
+        ],
+        "type": "object",
+        "properties": {
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyProfileId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "requirementCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "queued": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RequirementDto": {
+        "required": [
+          "id",
+          "kind",
+          "type",
+          "text",
+          "valueJson",
+          "mandatory",
+          "weight",
+          "threshold",
+          "confidence",
+          "needsVerification",
+          "sourceDocumentId",
+          "sourceDocumentTitle",
+          "sourcePage",
+          "sourceQuote"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RequirementKind"
+          },
+          "type": {
+            "$ref": "#/components/schemas/RequirementType"
+          },
+          "text": {
+            "type": "string"
+          },
+          "valueJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mandatory": {
+            "type": "boolean"
+          },
+          "weight": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "threshold": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
+          "needsVerification": {
+            "type": "boolean"
+          },
+          "sourceDocumentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "sourceDocumentTitle": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourcePage": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "sourceQuote": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RequirementKind": {
+        "type": "integer"
+      },
+      "RequirementType": {
+        "type": "integer"
+      },
+      "RewrapResult": {
+        "required": [
+          "activeKeyId",
+          "total",
+          "rewrapped",
+          "alreadyCurrent",
+          "errors"
+        ],
+        "type": "object",
+        "properties": {
+          "activeKeyId": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rewrapped": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "alreadyCurrent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SourceHealthDto": {
+        "required": [
+          "id",
+          "source",
+          "checkedAt",
+          "ok",
+          "httpStatus",
+          "latencyMs",
+          "schemaDriftJson",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "httpStatus": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "latencyMs": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "schemaDriftJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SubmissionMethod": {
+        "type": "integer"
+      },
+      "TenderClassificationDto": {
+        "required": [
+          "stage",
+          "categoryCodes",
+          "relevance",
+          "rationale",
+          "classifiedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "stage": {
+            "$ref": "#/components/schemas/ClassificationStage"
+          },
+          "categoryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relevance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rationale": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "classifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TenderDetailDto": {
+        "required": [
+          "id",
+          "ocid",
+          "bidNumber",
+          "title",
+          "description",
+          "buyerId",
+          "buyerName",
+          "buyerType",
+          "province",
+          "mainCategory",
+          "additionalCategories",
+          "procurementMethod",
+          "procurementMethodDetails",
+          "valueAmount",
+          "valueCurrency",
+          "publishedAt",
+          "closingAt",
+          "briefingAt",
+          "briefingCompulsory",
+          "briefingVenue",
+          "submissionMethod",
+          "status",
+          "statusReason",
+          "sourceUrl",
+          "hasAwards",
+          "firstSeenAt",
+          "lastSeenAt",
+          "summary",
+          "documents",
+          "classification",
+          "statusHistory"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ocid": {
+            "type": "string"
+          },
+          "bidNumber": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "buyerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "buyerName": {
+            "type": "string"
+          },
+          "buyerType": {
+            "$ref": "#/components/schemas/BuyerType"
+          },
+          "province": {
+            "$ref": "#/components/schemas/Province"
+          },
+          "mainCategory": {
+            "$ref": "#/components/schemas/ProcurementCategory"
+          },
+          "additionalCategories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "procurementMethod": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "procurementMethodDetails": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "valueAmount": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "valueCurrency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closingAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "briefingAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "briefingCompulsory": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "briefingVenue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "submissionMethod": {
+            "$ref": "#/components/schemas/SubmissionMethod"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenderStatus"
+          },
+          "statusReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "hasAwards": {
+            "type": "boolean"
+          },
+          "firstSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenderDocumentDto"
+            }
+          },
+          "classification": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TenderClassificationDto"
+              }
+            ]
+          },
+          "statusHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenderStatusHistoryDto"
+            }
+          }
+        }
+      },
+      "TenderDocumentDto": {
+        "required": [
+          "id",
+          "title",
+          "url",
+          "format",
+          "status",
+          "pageCount",
+          "needsOcr",
+          "datePublished",
+          "dateModified",
+          "sizeBytes",
+          "sha256",
+          "downloadedAt",
+          "extractedAt",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "format": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          },
+          "pageCount": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "needsOcr": {
+            "type": "boolean"
+          },
+          "datePublished": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "dateModified": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "sizeBytes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "sha256": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "downloadedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "extractedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "stored": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TenderListItemDto": {
+        "required": [
+          "id",
+          "ocid",
+          "bidNumber",
+          "title",
+          "buyerName",
+          "province",
+          "mainCategory",
+          "procurementMethodDetails",
+          "publishedAt",
+          "closingAt",
+          "status",
+          "relevance",
+          "categoryCodes",
+          "matchStatus",
+          "documentCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ocid": {
+            "type": "string"
+          },
+          "bidNumber": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "buyerName": {
+            "type": "string"
+          },
+          "province": {
+            "$ref": "#/components/schemas/Province"
+          },
+          "mainCategory": {
+            "$ref": "#/components/schemas/ProcurementCategory"
+          },
+          "procurementMethodDetails": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closingAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenderStatus"
+          },
+          "relevance": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "categoryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "matchStatus": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MatchStatus"
+              }
+            ]
+          },
+          "documentCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TenderRequirementsDto": {
+        "required": [
+          "tenderId",
+          "summary",
+          "extractedAt",
+          "model",
+          "promptVersion",
+          "total",
+          "needsVerification",
+          "mandatory",
+          "functional",
+          "documents",
+          "other"
+        ],
+        "type": "object",
+        "properties": {
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "summary": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "extractedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "promptVersion": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "needsVerification": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mandatory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementDto"
+            }
+          },
+          "functional": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementDto"
+            }
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementDto"
+            }
+          },
+          "other": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementDto"
+            }
+          }
+        }
+      },
+      "TenderSort": {
+        "type": "integer"
+      },
+      "TenderStatus": {
+        "type": "integer"
+      },
+      "TenderStatusHistoryDto": {
+        "required": [
+          "from",
+          "to",
+          "reason",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/TenderStatus"
+          },
+          "to": {
+            "$ref": "#/components/schemas/TenderStatus"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TestInterestCategoriesQuery": {
+        "type": "object",
+        "properties": {
+          "tenderId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "documentTitles": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "mainCategory": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProcurementCategory"
+              }
+            ]
+          },
+          "procurementMethodDetails": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TestNotificationResponse": {
+        "required": [
+          "notificationId",
+          "channel",
+          "recipient",
+          "subject"
+        ],
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          }
+        }
+      },
+      "TestRequest": {
+        "required": [
+          "channel"
+        ],
+        "type": "object",
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel"
+          }
+        }
+      },
+      "UpdateDocumentRequest": {
+        "required": [
+          "title",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "UserDto": {
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "roles"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "Paste the access token from POST /api/v1/auth/login.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bearer": [ ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Tenders"
+    },
+    {
+      "name": "Documents"
+    },
+    {
+      "name": "Interest categories"
+    },
+    {
+      "name": "Company profiles"
+    },
+    {
+      "name": "Notifications"
+    },
+    {
+      "name": "Admin"
+    }
+  ]
+}

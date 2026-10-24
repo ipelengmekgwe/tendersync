@@ -28,6 +28,8 @@ WP10 adds the notification layer (PLAN.md §7.6, §9). Domain events reach `Noti
 
 WP11 adds status tracking and reminders (PLAN.md §7.7). `RefreshActiveTendersJob` (05:00 SAST) re-fetches every matched, unfinished tender by ocid through the same ingest upsert, so new documents, moved closing dates, awards and cancellations raise the same events as a normal ingest (and so the WP10 notifications); the least recently checked tenders go first, with a polite pause between calls. Cancellation is detected from the wording of a release (`CancellationDetector`: titles and document titles matched loosely, descriptions only on sentence-level wording), awards from the release's award section. `ComputeStatusJob` (hourly) re-derives Open → ClosingSoon → Closed as time passes; every transition lands in `tender_status_history` and, for matched tenders, Closed, Cancelled and Awarded become TenderChanged or AwardPublished messages. `ClosingRemindersJob` and `BriefingRemindersJob` (06:00) send the 7/3/1-day closing reminders for matched, non-dismissed tenders and briefing reminders two days ahead (compulsory briefings also to dismissed matches); `DocumentExpiryCheckJob` (06:30) flags company documents expiring within 30 days. Buckets are counted in South African calendar days and deduplicated on the target date, so a moved date reminds again and a re-run never repeats. `GET /api/v1/tenders/{id}/history` returns the transitions, the releases seen and the notifications sent.
 
+WP12 adds the dashboard shell (PLAN.md §11, ADR-010/011): a Next.js 15 app in `web/` (TypeScript strict, Tailwind 4, shadcn/ui, TanStack Query, dark mode). Sign-in posts to the app's own route handler, which calls `POST /api/v1/auth/login` and keeps the access and refresh tokens in httpOnly cookies; the browser never holds a token. Client components call the API through `/api/proxy/*`, which adds the bearer token, rotates the refresh token once on a 401 and clears the cookies when that fails; server components use the same typed client directly. The client types are generated from the API's OpenAPI document (`npm run generate:api`, committed as `src/lib/api/schema.d.ts`). Pages: `/login`, `/` (overview shell), `/tenders` (search, status/province filters, matched-only and near-miss toggles, sort and paging, all in the URL) and a placeholder `/tenders/[id]`; the inbox, detail cards, company, settings and admin pages follow in WP13 and WP14. `npm run check` runs lint, type-check, Vitest and the production build; `npm run test:e2e` runs the Playwright login-and-list flow against a running stack (`E2E_EMAIL`/`E2E_PASSWORD`). `web/Dockerfile` builds the standalone image; `API_BASE_URL` points it at the API. `web/TenderSync.Web.esproj` only makes the folder visible in Visual Studio's Solution Explorer (JavaScript and TypeScript workload) with `npm run dev` as its start command; npm, Docker and CI never read it, and deleting it plus its line in `TenderSync.slnx` removes the integration.
+
 One-shot operator modes on the Worker (no Hangfire server is started):
 
 ```bash
@@ -114,6 +116,8 @@ The stores are plain JSON files at `%APPDATA%\Microsoft\UserSecrets\tendersync-a
 
 As an alternative for local testing, each host also loads an optional, git-ignored `appsettings.Development.local.json` next to its `appsettings.json` (any `appsettings.*.local.json` is ignored). It is read last, so its values win over user-secrets and environment variables; include only the keys you mean to override, because an empty string there blanks a secret. The file in each project folder holds commented examples.
 
+While the API runs in the Development environment, `DevAuth:AllowAnyCredentials` (on in `appsettings.Development.json`) lets any email and password sign in: an unknown email gets an Admin account created on the spot and the password is never checked. `Program.cs` forces the flag off in every other environment and logs a warning when it is on. Set it to false (user-secrets or `appsettings.Development.local.json`) to test real sign-in, including lockout.
+
 In Development the API applies migrations and seeds on start (`Database:MigrateOnStartup` / `Database:SeedOnStartup` in `appsettings.Development.json`); the Worker never migrates, so start the API once before the Worker on a fresh database. Then sign in at `/scalar` with `POST /api/v1/auth/login` and paste the access token into Authorize.
 
 ## Prerequisites
@@ -135,6 +139,7 @@ dotnet run --project src/TenderSync.Api
 |---|---|
 | API | http://localhost:5000 (Scalar at `/scalar`; the Visual Studio profile opens it on start) |
 | Worker | http://localhost:5001 (Hangfire at `/hangfire` from WP05) |
+| Dashboard | http://localhost:3000 (`cd web && npm install --legacy-peer-deps && npm run dev`) |
 | Seq logs | http://localhost:5341 |
 | PostgreSQL | `localhost:5432`, database `tendersync` |
 

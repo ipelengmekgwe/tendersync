@@ -92,3 +92,4 @@ If the architecture tests fail, fix the dependency, not the test.
 - The eTenders OCDS feed: `tender.title` is the **bid number**, `tender.description` is the human title. `PageSize` must stay at 100 (200 returns HTTP 500). See PLAN.md §2.
 - Never auto-submit a bid (ADR-015). Never send bid-pack contact details through notification channels (POPIA).
 - Company documents are encrypted at rest; never write them to disk unencrypted outside the document store.
+- `DevAuth:AllowAnyCredentials` (IdentityService) is a Development-only shortcut that signs anyone in as Admin. The API host's `PostConfigure` forces it off outside Development; never register it anywhere else, never read it in the Worker, and keep the e2e wrong-password test skipped only through `E2E_DEV_AUTH_BYPASS`.
