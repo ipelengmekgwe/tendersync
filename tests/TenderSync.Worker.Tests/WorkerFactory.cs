@@ -11,6 +11,7 @@ using Testcontainers.PostgreSql;
 using TenderSync.Infrastructure;
 using TenderSync.Application.Abstractions.Identity;
 using TenderSync.Application.Abstractions.Notifications;
+using TenderSync.Application.Abstractions.Sources;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TenderSync.Application.Common.Events;
 using TenderSync.Application.Security;
@@ -44,6 +45,9 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
 
     public FakeFileServer Downloads { get; } = new();
 
+    /// <summary>Replaces the eTenders source so refresh and ingest tests script their own releases.</summary>
+    public FakeTenderSource Source { get; } = new();
+
     /// <summary>One fake per channel, replacing the real email/Telegram/Teams/SMS/WhatsApp channels.</summary>
     public IReadOnlyDictionary<Domain.Enums.NotificationChannel, FakeNotificationChannel> Channels { get; } =
         Enum.GetValues<Domain.Enums.NotificationChannel>().ToDictionary(c => c, c => new FakeNotificationChannel(c));
@@ -70,6 +74,7 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
             ["Encryption:ActiveKeyId"] = "test",
             ["Notifications:DashboardBaseUrl"] = "http://localhost:3000",
             ["Notifications:SweepOlderThanSeconds"] = "30",
+            ["Status:RefreshSpacingMs"] = "0",
             ["DocumentStore:Provider"] = "FileSystem",
             ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
             ["Documents:DownloadSpacingMs"] = "0",
@@ -78,6 +83,8 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
         {
             services.AddSingleton(Recorded);
             services.RemoveAll<INotificationChannel>();
+            services.RemoveAll<ITenderSource>();
+            services.AddSingleton<ITenderSource>(Source);
             foreach (var channel in Channels.Values)
             {
                 services.AddSingleton<INotificationChannel>(channel);
