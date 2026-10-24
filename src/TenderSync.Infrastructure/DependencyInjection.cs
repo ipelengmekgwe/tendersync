@@ -6,6 +6,7 @@ using Npgsql;
 using TenderSync.Application.Abstractions;
 using TenderSync.Application.Abstractions.Identity;
 using TenderSync.Application.Abstractions.Persistence;
+using TenderSync.Infrastructure.ETenders;
 using TenderSync.Infrastructure.Identity;
 using TenderSync.Infrastructure.Persistence;
 using TenderSync.Infrastructure.Persistence.Interceptors;
@@ -52,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<ITokenService, JwtTokenService>();
+        services.AddETenders(configuration);
 
         if (configuration is not null)
         {

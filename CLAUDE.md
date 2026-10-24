@@ -46,6 +46,10 @@ If the architecture tests fail, fix the dependency, not the test.
 - React to domain events with `INotificationHandler<DomainEventNotification<TEvent>>` in `Application/Features/<Area>/EventHandlers/`. The outbox job publishes them; handlers must be idempotent because a failed batch is retried.
 - Worker tests set `Hangfire:ServerEnabled=false` and invoke job classes directly from a scope; never rely on the Hangfire server firing in a test.
 - `NpgsqlDataSource.ConnectionString` strips the password. Anything that needs a raw connection string (Hangfire storage) reads it from `IConfiguration` at resolve time.
+- New tender sources implement `ITenderSource` (Application) and map to `TenderSnapshot`; `TenderIngestor` does the upsert, never the source. The eTenders client lives in `Infrastructure/ETenders/` with its resilience pipeline in `AddETenders`; keep `PageSize` at 100. Every page is checked against `ocds-release-package.schema.json` (also in `docs/research/`); extend the schema when the mapper starts relying on a new field.
+- Dapper read queries map onto private `Row` classes with settable properties, not positional records.
+- JsonSchema.Net registers a schema's `$id` globally: load each schema once (static) or the second instance throws "Overwriting registered schemas".
+- The eTenders API returns HTTP 500 for any page containing certain releases ("poison rows"), and pages shift as new releases arrive. `ETendersClient` bisects a failing page (100 → 10 → 1) and skips only those rows; plain 500 is excluded from retry and circuit-breaker handling for that reason. Skips are reported in `SourceFetchStats` and the ingest job's details.
 - Domain entities have private setters and behaviour methods (`Tender.ApplyRelease(...)`), never public property bags. Domain events are plain records in `Domain/Events/`.
 - IDs are `Guid` v7 generated in Domain. Timestamps are `DateTimeOffset` in UTC. Display in SAST only at the edge.
 - Prompts are versioned markdown under `Application/Prompts/<purpose>/v<N>.md`; a change to a prompt bumps the version and must pass its eval.

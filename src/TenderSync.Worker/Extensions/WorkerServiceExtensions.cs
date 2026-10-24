@@ -89,6 +89,9 @@ public static class WorkerServiceExtensions
             .AddCheck<HangfireStorageHealthCheck>("hangfire", tags: ["ready"]);
 
         services.AddScoped<ProcessOutboxJob>();
+        services.AddScoped<IngestRecentReleasesJob>();
+        services.AddScoped<BackfillReleasesJob>();
+        services.AddScoped<SourceHealthCheckJob>();
 
         return services;
     }

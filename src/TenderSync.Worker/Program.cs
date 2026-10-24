@@ -3,6 +3,7 @@ using Hangfire;
 using Serilog;
 using TenderSync.Application;
 using TenderSync.Infrastructure;
+using TenderSync.Worker;
 using TenderSync.Worker.Extensions;
 using TenderSync.Worker.Jobs;
 
@@ -10,7 +11,13 @@ Log.Logger = new LoggerConfiguration().WriteTo.Console(formatProvider: CultureIn
 
 try
 {
+    var cli = WorkerCli.Parse(args);
     var builder = WebApplication.CreateBuilder(args);
+
+    if (cli.IsOneShot)
+    {
+        builder.Configuration["Hangfire:ServerEnabled"] = "false";
+    }
 
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
@@ -24,6 +31,21 @@ try
     builder.Services.AddWorkerServices(builder.Configuration);
 
     var app = builder.Build();
+
+    if (cli.IsOneShot)
+    {
+        try
+        {
+            await cli.RunAsync(app.Services, app.Lifetime.ApplicationStopping);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Error(ex, "One-shot run failed");
+            Environment.ExitCode = 1;
+        }
+
+        return;
+    }
 
     app.UseSerilogRequestLogging();
     app.UseExceptionHandler();

@@ -1,8 +1,9 @@
 using TenderSync.Domain.Common;
+using TenderSync.Domain.Events;
 
 namespace TenderSync.Domain.Operations;
 
-/// <summary>Result of probing an external source (API reachability, download endpoint, schema drift).</summary>
+/// <summary>Result of probing an external source (API reachability, download endpoint, schema drift). Raises <see cref="PipelineFailure"/> when unhealthy.</summary>
 public sealed class SourceHealthCheck : Entity
 {
     private SourceHealthCheck()
@@ -25,7 +26,7 @@ public sealed class SourceHealthCheck : Entity
 
     public static SourceHealthCheck Record(string source, bool ok, int? httpStatus, int? latencyMs, string? schemaDriftJson, string? error, DateTimeOffset at)
     {
-        return new SourceHealthCheck
+        var check = new SourceHealthCheck
         {
             Source = Guard.NotEmpty(source, nameof(source)),
             Ok = ok,
@@ -35,5 +36,16 @@ public sealed class SourceHealthCheck : Entity
             Error = Guard.Trimmed(error),
             CheckedAt = at,
         };
+
+        if (!ok)
+        {
+            check.Raise(new PipelineFailure(check.Source, check.Error ?? "Source unhealthy", check.SchemaDriftJson, at));
+        }
+        else if (check.SchemaDriftJson is not null)
+        {
+            check.Raise(new PipelineFailure(check.Source, "Source schema drift detected", check.SchemaDriftJson, at));
+        }
+
+        return check;
     }
 }

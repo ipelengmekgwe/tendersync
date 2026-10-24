@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tendersync.local/schemas/ocds-release-package.json",
+  "title": "eTenders OCDS release package (shape verified 23 Oct 2026)",
+  "description": "Minimal contract TenderSync relies on. Extra fields are allowed; missing or retyped fields are drift.",
+  "type": "object",
+  "required": ["releases"],
+  "properties": {
+    "uri": { "type": "string" },
+    "version": { "type": "string" },
+    "publishedDate": { "type": "string" },
+    "license": { "type": "string" },
+    "releases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/release" }
+    },
+    "links": {
+      "type": "object",
+      "properties": {
+        "next": { "type": ["string", "null"] },
+        "prev": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "$defs": {
+    "release": {
+      "type": "object",
+      "required": ["ocid", "id", "date", "tag", "tender"],
+      "properties": {
+        "ocid": { "type": "string", "pattern": "^ocds-9t57fa-" },
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "tag": { "type": "array", "items": { "type": "string" } },
+        "initiationType": { "type": "string" },
+        "tender": { "$ref": "#/$defs/tender" },
+        "buyer": { "$ref": "#/$defs/organizationReference" },
+        "awards": { "type": "array" },
+        "contracts": { "type": "array" },
+        "parties": { "type": "array" }
+      }
+    },
+    "tender": {
+      "type": "object",
+      "required": ["id", "title", "description", "documents", "procuringEntity"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "mainProcurementCategory": { "type": "string" },
+        "additionalProcurementCategories": { "type": "array", "items": { "type": "string" } },
+        "description": { "type": "string" },
+        "value": {
+          "type": "object",
+          "properties": {
+            "amount": { "type": ["number", "string", "null"] },
+            "currency": { "type": ["string", "null"] }
+          }
+        },
+        "documents": { "type": "array", "items": { "$ref": "#/$defs/document" } },
+        "tenderPeriod": {
+          "type": "object",
+          "properties": {
+            "startDate": { "type": ["string", "null"] },
+            "endDate": { "type": ["string", "null"] }
+          }
+        },
+        "procuringEntity": { "$ref": "#/$defs/organizationReference" },
+        "procurementMethod": { "type": ["string", "null"] },
+        "procurementMethodDetails": { "type": ["string", "null"] }
+      }
+    },
+    "document": {
+      "type": "object",
+      "required": ["id", "url"],
+      "properties": {
+        "id": { "type": "string" },
+        "documentType": { "type": ["string", "null"] },
+        "title": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "url": { "type": "string" },
+        "datePublished": { "type": ["string", "null"] },
+        "dateModified": { "type": ["string", "null"] },
+        "format": { "type": ["string", "null"] },
+        "language": { "type": ["string", "null"] }
+      }
+    },
+    "organizationReference": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    }
+  }
+}
