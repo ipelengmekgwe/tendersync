@@ -58,6 +58,9 @@ public sealed class CompanyProfile : Entity
 
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>POPIA (PLAN.md §12): key-personnel summaries go to the model for functionality estimates only when the profile owner opts in.</summary>
+    public bool ShareKeyPersonnelWithModel { get; private set; }
+
     public CompanyCapabilities Capabilities
     {
         get => DomainJson.Deserialize<CompanyCapabilities>(CapabilitiesJson) ?? CompanyCapabilities.Empty;
@@ -119,6 +122,8 @@ public sealed class CompanyProfile : Entity
     }
 
     public void SetActive(bool active) => IsActive = active;
+
+    public void SetModelSharing(bool shareKeyPersonnel) => ShareKeyPersonnelWithModel = shareKeyPersonnel;
 
     public bool HasValidCsd(DateTimeOffset asOf) => CsdNumber is not null && (CsdExpiry is null || CsdExpiry > asOf);
 

@@ -31,7 +31,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     private EfRepository<CompanyDocument>? _companyDocuments;
     private TenderMatchRepository? _tenderMatches;
     private EfRepository<TenderRequirement>? _tenderRequirements;
-    private EfRepository<QualificationReport>? _qualificationReports;
+    private QualificationReportRepository? _qualificationReports;
     private NotificationRepository? _notifications;
     private EfRepository<NotificationPreference>? _notificationPreferences;
     private OutboxRepository? _outbox;
@@ -105,7 +105,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public IRepository<TenderRequirement> TenderRequirements => _tenderRequirements ??= new EfRepository<TenderRequirement>(this);
 
-    public IRepository<QualificationReport> QualificationReports => _qualificationReports ??= new EfRepository<QualificationReport>(this);
+    public IQualificationReportRepository QualificationReports => _qualificationReports ??= new QualificationReportRepository(this);
 
     public INotificationRepository Notifications => _notifications ??= new NotificationRepository(this);
 

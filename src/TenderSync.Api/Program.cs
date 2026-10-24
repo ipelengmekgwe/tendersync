@@ -47,6 +47,7 @@ try
     app.MapTenderEndpoints();
     app.MapDocumentEndpoints();
     app.MapInterestCategoryEndpoints();
+    app.MapCompanyProfileEndpoints();
     app.MapAdminEndpoints();
 
     await app.MigrateAndSeedAsync();

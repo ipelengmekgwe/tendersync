@@ -4,6 +4,7 @@ using TenderSync.Domain.Categories;
 using TenderSync.Domain.Companies;
 using TenderSync.Domain.Geography;
 using TenderSync.Domain.Notifications;
+using TenderSync.Domain.Qualification;
 using TenderSync.Domain.Tenders;
 
 namespace TenderSync.Infrastructure.Persistence.Repositories;
@@ -45,6 +46,15 @@ internal sealed class CompanyProfileRepository(AppDbContext context) : EfReposit
     public async Task<IReadOnlyList<CompanyProfile>> ListActiveAsync(CancellationToken cancellationToken = default) =>
         await Set.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<CompanyProfile>> ListAllAsync(CancellationToken cancellationToken = default) =>
+        await Set.OrderBy(p => p.Name).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<CompanyDocument>> ListAllDocumentsAsync(CancellationToken cancellationToken = default) =>
+        await Context.CompanyDocumentSet.IgnoreQueryFilters().OrderBy(d => d.CreatedAt).ToListAsync(cancellationToken);
+
+    public Task<int> CountDocumentsAsync(Guid companyProfileId, CancellationToken cancellationToken = default) =>
+        Context.CompanyDocumentSet.CountAsync(d => d.CompanyProfileId == companyProfileId, cancellationToken);
+
     public async Task<IReadOnlyList<CompanyDocument>> GetDocumentsAsync(Guid companyProfileId, bool includeDeleted = false, CancellationToken cancellationToken = default)
     {
         IQueryable<CompanyDocument> query = Context.CompanyDocumentSet;
@@ -55,6 +65,23 @@ internal sealed class CompanyProfileRepository(AppDbContext context) : EfReposit
 
         return await query.Where(d => d.CompanyProfileId == companyProfileId).OrderBy(d => d.Type).ThenBy(d => d.Title).ToListAsync(cancellationToken);
     }
+}
+
+internal sealed class QualificationReportRepository(AppDbContext context) : EfRepository<QualificationReport>(context), IQualificationReportRepository
+{
+    public Task<QualificationReport?> GetLatestAsync(Guid tenderId, Guid? companyProfileId = null, CancellationToken cancellationToken = default)
+    {
+        var query = Set.Where(r => r.TenderId == tenderId);
+        if (companyProfileId is { } profileId)
+        {
+            query = query.Where(r => r.CompanyProfileId == profileId);
+        }
+
+        return query.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<QualificationReport>> ListByTenderAsync(Guid tenderId, CancellationToken cancellationToken = default) =>
+        await Set.Where(r => r.TenderId == tenderId).OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).ToListAsync(cancellationToken);
 }
 
 internal sealed class TenderMatchRepository(AppDbContext context) : EfRepository<TenderMatch>(context), ITenderMatchRepository

@@ -224,6 +224,9 @@ public sealed class Tender : Entity
     /// <summary>Called by the extractor after the requirement rows were replaced.</summary>
     public void MarkRequirementsExtracted(int requirementCount, DateTimeOffset now) => Raise(new RequirementsExtracted(Id, Ocid, requirementCount, now));
 
+    /// <summary>Queues qualification (PLAN.md §7.5) for one profile, or every matched profile when null.</summary>
+    public void RequestQualification(Guid? companyProfileId, DateTimeOffset now) => Raise(new TenderQualificationRequested(Id, Ocid, companyProfileId, now));
+
     public void SetProvince(Province province)
     {
         if (province != Province.Unknown)

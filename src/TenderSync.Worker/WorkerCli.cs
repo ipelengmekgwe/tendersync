@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using TenderSync.Application.Features.Classification;
 using TenderSync.Application.Features.Classification.Golden;
 using TenderSync.Application.Features.Documents;
+using TenderSync.Application.Features.Qualification;
 using TenderSync.Application.Features.Requirements;
 using TenderSync.Application.Features.Requirements.Golden;
 using TenderSync.Infrastructure.Persistence;
@@ -18,7 +19,8 @@ namespace TenderSync.Worker;
 /// <c>--classify-days N</c> or <c>--classify ocid[,ocid...]</c> runs classification (add <c>--prefilter-only</c> to skip the model);
 /// <c>--build-golden-set path [--golden-days N]</c> writes the classification review file (WP07);
 /// <c>--migrate-seed</c> applies migrations and reference-data seeding (the production migration job, PLAN.md §15);
-/// <c>--extract ocid[,ocid...] [--extraction-template docs/golden/extraction]</c> extracts requirements (WP08) and writes review templates.
+/// <c>--extract ocid[,ocid...] [--extraction-template docs/golden/extraction]</c> extracts requirements (WP08) and writes review templates;
+/// <c>--qualify ocid[,ocid...] [--qualify-report dir]</c> runs the qualification engine (WP09) and optionally writes each report's markdown.
 /// The Hangfire server is not started in these modes.
 /// </summary>
 public sealed record WorkerCli(
@@ -33,9 +35,11 @@ public sealed record WorkerCli(
     int GoldenDays,
     bool MigrateAndSeed,
     IReadOnlyList<string> ExtractOcids,
-    string? ExtractionTemplatePath)
+    string? ExtractionTemplatePath,
+    IReadOnlyList<string> QualifyOcids,
+    string? QualifyReportPath)
 {
-    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed || ExtractOcids.Count > 0;
+    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed || ExtractOcids.Count > 0 || QualifyOcids.Count > 0;
 
     public static WorkerCli Parse(string[] args)
     {
@@ -49,6 +53,8 @@ public sealed record WorkerCli(
         var migrateSeed = false;
         var extract = new List<string>();
         string? extractionTemplate = null;
+        var qualify = new List<string>();
+        string? qualifyReport = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -99,10 +105,18 @@ public sealed record WorkerCli(
                     extractionTemplate = args[i + 1];
                     i++;
                     break;
+                case "--qualify" when i + 1 < args.Length:
+                    qualify.AddRange(args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    i++;
+                    break;
+                case "--qualify-report" when i + 1 < args.Length:
+                    qualifyReport = args[i + 1];
+                    i++;
+                    break;
             }
         }
 
-        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed, extract, extractionTemplate);
+        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed, extract, extractionTemplate, qualify, qualifyReport);
     }
 
     public async Task RunAsync(IServiceProvider services, CancellationToken cancellationToken)
@@ -144,6 +158,11 @@ public sealed record WorkerCli(
         if (ExtractOcids.Count > 0)
         {
             await ExtractAsync(scope.ServiceProvider, cancellationToken);
+        }
+
+        if (QualifyOcids.Count > 0)
+        {
+            await QualifyAsync(scope.ServiceProvider, cancellationToken);
         }
 
         if (GoldenSetPath is not null)
@@ -197,6 +216,57 @@ public sealed record WorkerCli(
         }
 
         logger.LogInformation("Extracted {Done} tender(s), {Failed} failed, ${Cost} total, ${Average} average", done, failed, cost, done == 0 ? 0 : cost / done);
+    }
+
+    /// <summary>Runs the qualification engine for the listed tenders (every matched or active profile) and, with --qualify-report DIR, writes {ocid}-{profile}.md for review.</summary>
+    private async Task QualifyAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        var qualifier = services.GetRequiredService<TenderQualifier>();
+        var db = services.GetRequiredService<Application.Abstractions.Persistence.IAppDbContext>();
+        var logger = services.GetRequiredService<ILogger<WorkerCli>>();
+
+        var tenders = await context.TenderSet.AsNoTracking().Where(t => QualifyOcids.Contains(t.Ocid)).Select(t => new { t.Id, t.Ocid }).ToListAsync(cancellationToken);
+        foreach (var missing in QualifyOcids.Except(tenders.Select(t => t.Ocid), StringComparer.Ordinal))
+        {
+            logger.LogWarning("Tender {Ocid} is not in the database; ingest it first", missing);
+        }
+
+        decimal cost = 0m;
+        int done = 0, failed = 0;
+        foreach (var tender in tenders)
+        {
+            try
+            {
+                var outcome = await qualifier.QualifyAsync(tender.Id, null, cancellationToken);
+                cost += outcome.CostUsd;
+                done++;
+                foreach (var profile in outcome.Profiles)
+                {
+                    logger.LogInformation("{Ocid} for {Company}: {Verdict}, score {Score}, functionality {Functionality}, {Questions} question(s), ${Cost}",
+                        outcome.Ocid, profile.CompanyName, profile.Verdict, profile.Score, profile.EstimatedFunctionality, profile.Questions, profile.CostUsd);
+                    if (QualifyReportPath is not null)
+                    {
+                        var report = await db.QualificationReports.GetByIdAsync(profile.ReportId, cancellationToken);
+                        Directory.CreateDirectory(QualifyReportPath);
+                        var safeName = string.Concat(profile.CompanyName.Where(char.IsLetterOrDigit));
+                        await File.WriteAllTextAsync(Path.Combine(QualifyReportPath, $"{outcome.Ocid}-{safeName}.md"), report!.SummaryMarkdown, cancellationToken);
+                    }
+                }
+
+                foreach (var error in outcome.Errors)
+                {
+                    logger.LogWarning("{Ocid}: {Error}", outcome.Ocid, error);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failed++;
+                logger.LogError(ex, "Qualification of {Ocid} failed", tender.Ocid);
+            }
+        }
+
+        logger.LogInformation("Qualified {Done} tender(s), {Failed} failed, ${Cost} total", done, failed, cost);
     }
 
     /// <summary>Classifies tenders by ocid or by publication window; --prefilter-only runs stage 1 alone (no model, no cost).</summary>

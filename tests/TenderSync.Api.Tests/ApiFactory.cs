@@ -49,6 +49,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Serilog:MinimumLevel:Default"] = "Warning",
             ["Llm:Routing:classify"] = "fake",
             ["Llm:Routing:extract-requirements"] = "fake",
+            ["Llm:Routing:estimate-functionality"] = "fake",
+            ["Llm:Routing:fuzzy-match-certification"] = "fake",
+            ["Encryption:Keys:test"] = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)),
+            ["Encryption:ActiveKeyId"] = "test",
             ["DocumentStore:Provider"] = "FileSystem",
             ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
         }));

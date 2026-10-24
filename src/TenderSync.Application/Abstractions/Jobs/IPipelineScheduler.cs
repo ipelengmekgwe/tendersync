@@ -17,4 +17,7 @@ public interface IPipelineScheduler
 
     /// <summary>Queues <c>ExtractRequirementsJob</c> (PLAN.md §7.4).</summary>
     void EnqueueRequirementExtraction(Guid tenderId);
+
+    /// <summary>Queues <c>QualifyTenderJob</c> (PLAN.md §7.5) for one profile, or every matched profile when null.</summary>
+    void EnqueueQualification(Guid tenderId, Guid? companyProfileId);
 }
