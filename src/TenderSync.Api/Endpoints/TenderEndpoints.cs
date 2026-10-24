@@ -4,6 +4,8 @@ using TenderSync.Application.Common.Models;
 using TenderSync.Application.Features.Classification;
 using TenderSync.Application.Features.Classification.Commands.ReclassifyTender;
 using TenderSync.Application.Features.Requirements.Commands.RequestExtraction;
+using TenderSync.Application.Features.Qualification.Commands.RequestQualification;
+using TenderSync.Application.Features.Qualification.Queries.GetTenderQualification;
 using TenderSync.Application.Features.Requirements.Queries.GetTenderRequirements;
 using TenderSync.Application.Features.Tenders;
 using TenderSync.Application.Features.Tenders.Queries.GetTender;
@@ -85,6 +87,20 @@ public static class TenderEndpoints
             .RequireAuthorization(Policies.Reviewer)
             .WithSummary("Queues requirement extraction (and any outstanding document downloads first). Reviewer or Admin.")
             .Produces<RequestExtractionResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        group.MapGet("/{id:guid}/qualification", async (Guid id, Guid? companyProfileId, ISender sender, CancellationToken ct) =>
+                TypedResults.Ok(await sender.Send(new GetTenderQualificationQuery(id, companyProfileId), ct)))
+            .WithSummary("The newest qualification report (can we bid?): verdict, score, findings with sources, missing items, questions for a human and the markdown with its disclaimer. 404 until a run has completed.")
+            .Produces<QualificationReportDto>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{id:guid}/qualify", async (Guid id, Guid? companyProfileId, ISender sender, CancellationToken ct) =>
+                TypedResults.Accepted((string?)null, await sender.Send(new RequestQualificationCommand(id, companyProfileId), ct)))
+            .RequireAuthorization(Policies.Reviewer)
+            .WithSummary("Queues a qualification run for one profile (companyProfileId) or every matched profile. Needs extracted requirements (409 otherwise). Reviewer or Admin.")
+            .Produces<RequestQualificationResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 

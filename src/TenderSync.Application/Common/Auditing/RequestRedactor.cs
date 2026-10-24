@@ -5,27 +5,50 @@ using TenderSync.Domain.Common;
 
 namespace TenderSync.Application.Common.Auditing;
 
-/// <summary>Serialises a request for logs and audit rows with [Sensitive] properties replaced by a placeholder.</summary>
+/// <summary>
+/// Serialises a request for logs and audit rows with [Sensitive] properties replaced by a placeholder. Nested input objects
+/// (a command wrapping a body record) are walked the same way, so a sensitive field two levels down is still redacted;
+/// streams are never serialised.
+/// </summary>
 public static class RequestRedactor
 {
     public const string Redacted = "***";
+    private const int MaxDepth = 3;
 
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> Cache = new();
 
     public static string ToJson(object request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return DomainJson.Serialize(Redact(request, 0));
+    }
 
-        var type = request.GetType();
+    private static object? Redact(object? value, int depth)
+    {
+        if (value is null || depth >= MaxDepth)
+        {
+            return value;
+        }
+
+        var type = value.GetType();
+        if (value is Stream)
+        {
+            return Redacted;
+        }
+
+        if (type.IsPrimitive || type.IsEnum || value is string || value is decimal || value is DateTimeOffset || value is DateTime || value is Guid || value is TimeSpan || value is System.Collections.IEnumerable)
+        {
+            return value;
+        }
+
         var properties = Cache.GetOrAdd(type, t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead && p.GetIndexParameters().Length == 0).ToArray());
-
         var map = new Dictionary<string, object?>(StringComparer.Ordinal);
         foreach (var property in properties)
         {
             var isSensitive = property.GetCustomAttribute<SensitiveAttribute>() is not null;
-            map[JsonNamingPolicy.CamelCase.ConvertName(property.Name)] = isSensitive ? Redacted : property.GetValue(request);
+            map[JsonNamingPolicy.CamelCase.ConvertName(property.Name)] = isSensitive ? Redacted : Redact(property.GetValue(value), depth + 1);
         }
 
-        return DomainJson.Serialize(map);
+        return map;
     }
 }

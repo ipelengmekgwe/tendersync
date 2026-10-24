@@ -58,4 +58,7 @@ public sealed class CompanyDocument : Entity
     public void SetExpiry(DateTimeOffset? expiresAt) => ExpiresAt = expiresAt;
 
     public void SoftDelete(DateTimeOffset now) => DeletedAt ??= now;
+
+    /// <summary>Key rotation: the same data key wrapped by the new master key (docs/runbooks/key-rotation.md).</summary>
+    public void RewrapDataKey(string encryptedDataKey) => EncryptedDataKey = Guard.NotEmpty(encryptedDataKey, nameof(encryptedDataKey));
 }

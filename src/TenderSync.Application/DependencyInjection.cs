@@ -42,6 +42,9 @@ public static class DependencyInjection
         services.AddScoped<Features.Classification.Golden.GoldenSetBuilder>();
         services.AddOptions<Features.Requirements.ExtractionOptions>(); // bound and validated by Infrastructure.AddLlm
         services.AddScoped<Features.Requirements.RequirementExtractor>();
+        services.AddOptions<Features.Qualification.QualificationOptions>(); // bound and validated by Infrastructure.AddLlm
+        services.AddScoped<Features.Qualification.TenderQualifier>();
+        services.AddOptions<Features.Companies.CompanyDocumentOptions>(); // bound and validated by Infrastructure.AddEncryption
         return services;
     }
 }

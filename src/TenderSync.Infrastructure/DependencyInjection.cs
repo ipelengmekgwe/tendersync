@@ -13,6 +13,7 @@ using TenderSync.Infrastructure.Llm;
 using TenderSync.Infrastructure.Persistence;
 using TenderSync.Infrastructure.Persistence.Interceptors;
 using TenderSync.Infrastructure.Persistence.Seed;
+using TenderSync.Infrastructure.Security;
 using TenderSync.Infrastructure.Services;
 
 namespace TenderSync.Infrastructure;
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddETenders(configuration);
         services.AddDocumentProcessing(configuration);
         services.AddLlm(configuration);
+        services.AddEncryption(configuration);
 
         if (configuration is not null)
         {

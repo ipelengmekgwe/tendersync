@@ -484,6 +484,10 @@ namespace TenderSync.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("registration_number");
 
+                    b.Property<bool>("ShareKeyPersonnelWithModel")
+                        .HasColumnType("boolean")
+                        .HasColumnName("share_key_personnel_with_model");
+
                     b.Property<string>("TaxPin")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")

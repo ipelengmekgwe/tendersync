@@ -27,7 +27,7 @@ public interface IAppDbContext
 
     IRepository<TenderRequirement> TenderRequirements { get; }
 
-    IRepository<QualificationReport> QualificationReports { get; }
+    IQualificationReportRepository QualificationReports { get; }
 
     INotificationRepository Notifications { get; }
 

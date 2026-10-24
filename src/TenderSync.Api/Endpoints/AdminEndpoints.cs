@@ -5,6 +5,7 @@ using TenderSync.Application.Features.Admin.Queries.GetLlmCallsSummary;
 using TenderSync.Application.Features.Admin.Queries.ListAuditLogs;
 using TenderSync.Application.Features.Admin.Queries.ListJobRuns;
 using TenderSync.Application.Features.Admin.Queries.ListSourceHealth;
+using TenderSync.Application.Features.Companies.Commands.RewrapCompanyDocuments;
 
 namespace TenderSync.Api.Endpoints;
 
@@ -36,6 +37,11 @@ public static class AdminEndpoints
             .WithSummary("Model spend: totals by day, purpose and model for a window (default 30 days), today's spend against the cap, and the latest calls.")
             .Produces<LlmCallsSummaryDto>()
             .ProducesValidationProblem();
+
+        group.MapPost("/encryption/rewrap", async (ISender sender, CancellationToken ct) =>
+                TypedResults.Ok(await sender.Send(new RewrapCompanyDocumentsCommand(), ct)))
+            .WithSummary("Master-key rotation: re-wraps every company document's data key with the active key (docs/runbooks/key-rotation.md).")
+            .Produces<RewrapResult>();
 
         return app;
     }
