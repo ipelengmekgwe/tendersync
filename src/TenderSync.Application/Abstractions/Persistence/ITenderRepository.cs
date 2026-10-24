@@ -21,4 +21,9 @@ public interface ITenderRepository : IRepository<Tender>
     Task ReplaceDocumentTextsAsync(Guid documentId, IEnumerable<DocumentText> pages, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<DocumentText>> GetDocumentTextsAsync(Guid documentId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TenderRequirement>> GetRequirementsAsync(Guid tenderId, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes the tender's requirement rows and adds the new ones in the same unit of work.</summary>
+    Task ReplaceRequirementsAsync(Guid tenderId, IEnumerable<TenderRequirement> requirements, CancellationToken cancellationToken = default);
 }

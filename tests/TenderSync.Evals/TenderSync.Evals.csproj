@@ -7,5 +7,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="../../docs/golden/*.jsonl" Link="golden/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../docs/golden/extraction/*.json" Link="golden/extraction/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

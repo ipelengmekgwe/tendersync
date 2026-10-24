@@ -47,6 +47,7 @@ public sealed class GetTenderQueryHandler(IAppDbContext db) : IRequestHandler<Ge
             tender.HasAwards,
             tender.FirstSeenAt,
             tender.LastSeenAt,
+            tender.Summary,
             tender.Documents.OrderBy(d => d.DatePublished).ThenBy(d => d.Title)
                 .Select(TenderDocumentDto.From).ToList(),
             classification is null ? null : new TenderClassificationDto(classification.Stage, classification.CategoryCodes, classification.Relevance, classification.Rationale, classification.ClassifiedAt),

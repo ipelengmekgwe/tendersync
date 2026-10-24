@@ -1,5 +1,6 @@
 using TenderSync.Domain.Common;
 using TenderSync.Domain.Enums;
+using TenderSync.Domain.Events;
 
 namespace TenderSync.Domain.Tenders;
 
@@ -110,6 +111,7 @@ public sealed class TenderDocument : Entity
         NeedsOcr = needsOcr;
         ExtractedAt = now;
         Status = DocumentStatus.Extracted;
+        Raise(new DocumentTextExtracted(TenderId, Id, pageCount, needsOcr, now));
     }
 
     public void MarkFailed(string error)

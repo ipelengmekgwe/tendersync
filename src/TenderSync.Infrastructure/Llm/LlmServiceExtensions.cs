@@ -19,9 +19,11 @@ public static class LlmServiceExtensions
         var anthropic = services.AddOptions<AnthropicOptions>();
         var openAi = services.AddOptions<OpenAiCompatibleOptions>();
         var classification = services.AddOptions<TenderSync.Application.Features.Classification.ClassificationOptions>();
+        var extraction = services.AddOptions<TenderSync.Application.Features.Requirements.ExtractionOptions>();
         if (configuration is not null)
         {
             classification.Bind(configuration.GetSection(TenderSync.Application.Features.Classification.ClassificationOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
+            extraction.Bind(configuration.GetSection(TenderSync.Application.Features.Requirements.ExtractionOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             llm.Bind(configuration.GetSection(LlmOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             anthropic.Bind(configuration.GetSection(AnthropicOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             openAi.Bind(configuration.GetSection(OpenAiCompatibleOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();

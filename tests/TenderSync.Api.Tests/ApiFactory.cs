@@ -48,6 +48,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Serilog:WriteTo:1:Name"] = "Console",
             ["Serilog:MinimumLevel:Default"] = "Warning",
             ["Llm:Routing:classify"] = "fake",
+            ["Llm:Routing:extract-requirements"] = "fake",
             ["DocumentStore:Provider"] = "FileSystem",
             ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
         }));
