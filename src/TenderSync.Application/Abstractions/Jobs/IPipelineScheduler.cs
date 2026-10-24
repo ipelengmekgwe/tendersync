@@ -14,4 +14,7 @@ public interface IPipelineScheduler
 
     /// <summary>Queues <c>ClassifyTenderJob</c> (PLAN.md §7.2) for a new or changed tender.</summary>
     void EnqueueClassification(Guid tenderId);
+
+    /// <summary>Queues <c>ExtractRequirementsJob</c> (PLAN.md §7.4).</summary>
+    void EnqueueRequirementExtraction(Guid tenderId);
 }

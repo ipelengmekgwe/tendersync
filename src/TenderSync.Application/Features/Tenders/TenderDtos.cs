@@ -76,6 +76,7 @@ public sealed record TenderDetailDto(
     bool HasAwards,
     DateTimeOffset FirstSeenAt,
     DateTimeOffset LastSeenAt,
+    string? Summary,
     IReadOnlyList<TenderDocumentDto> Documents,
     TenderClassificationDto? Classification,
     IReadOnlyList<TenderStatusHistoryDto> StatusHistory);

@@ -20,6 +20,8 @@ WP06 adds the AI layer (PLAN.md §8): one `ILlmClient` that every feature inject
 
 WP07 adds classification and matching (PLAN.md §7.2). Stage 1 is `KeywordPrefilter`: per enabled interest category, whole-word keyword hits weighted by field (title ×3, description ×1, document titles ×2) minus negative and global-negative hits ×2; a category at score 1 or more, or a services/unspecified tender procured by RFP or RFI, goes to stage 2. Stage 2 sends the tender text and the category list to the model with the `classify/v1` prompt and gets `{categories, relevance 0–100, isItServices, rationale, redFlags}` back as structured output. The result lands in `tender_classifications`; relevance at or above `Classification:MatchThreshold` (60) creates a `TenderMatch` for every active company profile whose capability categories overlap (an empty capability list matches everything), which raises `TenderMatched` for notifications and document download; 40–59 is a near miss (`GET /api/v1/tenders?nearMisses=true`). `ClassifyTenderJob` runs for every new tender and again when its text changes; `POST /api/v1/tenders/{id}/reclassify` (Reviewer) runs it on demand and `POST /api/v1/interest-categories/test` (Admin) dry-runs stage 1 on a tender or free text. The review file for the eval lives at `docs/golden/classification.jsonl` (set `isItMatch` per row); `tests/TenderSync.Evals` then reports stage-1 recall always and stage-2 precision/recall with `TENDERSYNC_EVALS=1` and a key.
 
+WP08 adds requirement extraction (PLAN.md §7.4). `ExtractRequirementsJob` sends each usable document of a tender to the Strong tier with the `extract-requirements/v1` prompt: PDFs up to 32 MB and 600 pages go natively with citations (page numbers come back from the model), larger or scanned ones go as extracted text with `[page N]` markers. The per-document answers (`TenderRequirementsV1`: summary, mandatory items by type, functionality criteria and threshold, evaluation method, required documents and form codes, briefing, submission, pricing, contract, contacts) are merged with the main bid document winning conflicts, then replace `tender_requirements` and fill the tender's summary, briefing and submission columns. Every row carries its source document, page and quote; rows under 0.5 confidence or without a page are flagged for verification. Extraction chains automatically once the last document of a matched tender has text; `POST /api/v1/tenders/{id}/extract` (Reviewer) queues it on demand (and downloads first if needed); `GET /api/v1/tenders/{id}/requirements` returns the grouped result. Enquiry contacts are stored for internal use only and never sent through notification channels. The labelling guide for the 20-tender accuracy set is in `docs/golden/extraction/README.md`.
+
 One-shot operator modes on the Worker (no Hangfire server is started):
 
 ```bash
@@ -53,6 +55,16 @@ dotnet run --project src/TenderSync.Worker -- --build-golden-set docs/golden/cla
 ```
 
 `--classify-days` without `--prefilter-only` calls the model for every stage-1 candidate (about a quarter of releases, under a cent each on Haiku). The golden-set builder keeps existing labels when the file is rebuilt.
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --extract ocds-9t57fa-175186 --extraction-template docs/golden/extraction
+```
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --migrate-seed
+```
+
+`--extract` runs requirement extraction for the listed tenders on the Strong tier (tens of cents per tender) and, with `--extraction-template`, writes the review templates. `--migrate-seed` is the production migration job: it applies migrations and refreshes reference data.
 
 Integration tests start a PostgreSQL 17 container through Testcontainers, so Docker must be running for `dotnet test`.
 

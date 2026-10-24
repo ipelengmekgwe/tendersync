@@ -40,6 +40,8 @@ public static class DependencyInjection
         services.AddSingleton<Features.Classification.KeywordPrefilter>();
         services.AddScoped<Features.Classification.TenderClassifier>();
         services.AddScoped<Features.Classification.Golden.GoldenSetBuilder>();
+        services.AddOptions<Features.Requirements.ExtractionOptions>(); // bound and validated by Infrastructure.AddLlm
+        services.AddScoped<Features.Requirements.RequirementExtractor>();
         return services;
     }
 }

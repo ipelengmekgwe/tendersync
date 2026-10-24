@@ -54,4 +54,18 @@ internal sealed class TenderRepository(AppDbContext context) : EfRepository<Tend
 
     public async Task<IReadOnlyList<DocumentText>> GetDocumentTextsAsync(Guid documentId, CancellationToken cancellationToken = default) =>
         await Context.DocumentTextSet.Where(t => t.DocumentId == documentId).OrderBy(t => t.Page).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<TenderRequirement>> GetRequirementsAsync(Guid tenderId, CancellationToken cancellationToken = default) =>
+        await Context.TenderRequirementSet.Where(r => r.TenderId == tenderId).OrderBy(r => r.Kind).ThenBy(r => r.CreatedAt).ToListAsync(cancellationToken);
+
+    public async Task ReplaceRequirementsAsync(Guid tenderId, IEnumerable<TenderRequirement> requirements, CancellationToken cancellationToken = default)
+    {
+        await Context.TenderRequirementSet.Where(r => r.TenderId == tenderId).ExecuteDeleteAsync(cancellationToken);
+        foreach (var entry in Context.ChangeTracker.Entries<TenderRequirement>().Where(e => e.Entity.TenderId == tenderId).ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+
+        Context.TenderRequirementSet.AddRange(requirements);
+    }
 }

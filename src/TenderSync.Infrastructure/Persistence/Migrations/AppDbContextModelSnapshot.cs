@@ -1322,6 +1322,10 @@ namespace TenderSync.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("submission_method");
 
+                    b.Property<string>("Summary")
+                        .HasColumnType("text")
+                        .HasColumnName("summary");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(1024)

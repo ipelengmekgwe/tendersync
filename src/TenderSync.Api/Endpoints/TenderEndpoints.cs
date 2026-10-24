@@ -3,6 +3,8 @@ using TenderSync.Api.Security;
 using TenderSync.Application.Common.Models;
 using TenderSync.Application.Features.Classification;
 using TenderSync.Application.Features.Classification.Commands.ReclassifyTender;
+using TenderSync.Application.Features.Requirements.Commands.RequestExtraction;
+using TenderSync.Application.Features.Requirements.Queries.GetTenderRequirements;
 using TenderSync.Application.Features.Tenders;
 using TenderSync.Application.Features.Tenders.Queries.GetTender;
 using TenderSync.Application.Features.Tenders.Queries.ListTenders;
@@ -71,6 +73,20 @@ public static class TenderEndpoints
             .WithSummary("Runs the keyword prefilter and the model classification again and returns the outcome. Reviewer or Admin.")
             .Produces<ClassificationOutcome>()
             .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id:guid}/requirements", async (Guid id, ISender sender, CancellationToken ct) =>
+                TypedResults.Ok(await sender.Send(new GetTenderRequirementsQuery(id), ct)))
+            .WithSummary("Extracted requirements grouped by kind, each with its source document, page, quote and verify flag.")
+            .Produces<TenderRequirementsDto>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{id:guid}/extract", async (Guid id, ISender sender, CancellationToken ct) =>
+                TypedResults.Accepted((string?)null, await sender.Send(new RequestExtractionCommand(id), ct)))
+            .RequireAuthorization(Policies.Reviewer)
+            .WithSummary("Queues requirement extraction (and any outstanding document downloads first). Reviewer or Admin.")
+            .Produces<RequestExtractionResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         return app;
     }

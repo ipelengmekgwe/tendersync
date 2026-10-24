@@ -93,6 +93,7 @@ public static class WorkerServiceExtensions
         services.AddScoped<ExtractDocumentTextJob>();
         services.AddScoped<LlmCostRollupJob>();
         services.AddScoped<ClassifyTenderJob>();
+        services.AddScoped<ExtractRequirementsJob>();
         services.AddScoped<IPipelineScheduler, HangfirePipelineScheduler>();
 
         return services;

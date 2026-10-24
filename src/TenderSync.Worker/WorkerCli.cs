@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using TenderSync.Application.Features.Classification;
 using TenderSync.Application.Features.Classification.Golden;
 using TenderSync.Application.Features.Documents;
+using TenderSync.Application.Features.Requirements;
+using TenderSync.Application.Features.Requirements.Golden;
 using TenderSync.Infrastructure.Persistence;
 using TenderSync.Infrastructure.Persistence.Seed;
 using TenderSync.Worker.Jobs;
@@ -15,7 +17,8 @@ namespace TenderSync.Worker;
 /// <c>--download-documents ocid[,ocid...]</c> downloads and extracts the bid packs of those tenders inline (no Hangfire);
 /// <c>--classify-days N</c> or <c>--classify ocid[,ocid...]</c> runs classification (add <c>--prefilter-only</c> to skip the model);
 /// <c>--build-golden-set path [--golden-days N]</c> writes the classification review file (WP07);
-/// <c>--migrate-seed</c> applies migrations and reference-data seeding (the production migration job, PLAN.md §15).
+/// <c>--migrate-seed</c> applies migrations and reference-data seeding (the production migration job, PLAN.md §15);
+/// <c>--extract ocid[,ocid...] [--extraction-template docs/golden/extraction]</c> extracts requirements (WP08) and writes review templates.
 /// The Hangfire server is not started in these modes.
 /// </summary>
 public sealed record WorkerCli(
@@ -28,9 +31,11 @@ public sealed record WorkerCli(
     bool PrefilterOnly,
     string? GoldenSetPath,
     int GoldenDays,
-    bool MigrateAndSeed)
+    bool MigrateAndSeed,
+    IReadOnlyList<string> ExtractOcids,
+    string? ExtractionTemplatePath)
 {
-    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed;
+    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed || ExtractOcids.Count > 0;
 
     public static WorkerCli Parse(string[] args)
     {
@@ -42,6 +47,8 @@ public sealed record WorkerCli(
         string? golden = null;
         var goldenDays = 30;
         var migrateSeed = false;
+        var extract = new List<string>();
+        string? extractionTemplate = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -84,10 +91,18 @@ public sealed record WorkerCli(
                 case "--migrate-seed":
                     migrateSeed = true;
                     break;
+                case "--extract" when i + 1 < args.Length:
+                    extract.AddRange(args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    i++;
+                    break;
+                case "--extraction-template" when i + 1 < args.Length:
+                    extractionTemplate = args[i + 1];
+                    i++;
+                    break;
             }
         }
 
-        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed);
+        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed, extract, extractionTemplate);
     }
 
     public async Task RunAsync(IServiceProvider services, CancellationToken cancellationToken)
@@ -126,6 +141,11 @@ public sealed record WorkerCli(
             await ClassifyAsync(scope.ServiceProvider, cancellationToken);
         }
 
+        if (ExtractOcids.Count > 0)
+        {
+            await ExtractAsync(scope.ServiceProvider, cancellationToken);
+        }
+
         if (GoldenSetPath is not null)
         {
             var summary = await scope.ServiceProvider.GetRequiredService<GoldenSetBuilder>().BuildAsync(GoldenSetPath, GoldenDays, targetRows: 250, cancellationToken);
@@ -133,6 +153,50 @@ public sealed record WorkerCli(
                 "Golden set {Path}: scanned {Scanned} tender(s), {Candidates} prefilter candidate(s), wrote {Rows} row(s), {Labelled} labelled",
                 summary.Path, summary.TendersScanned, summary.PrefilterCandidates, summary.RowsWritten, summary.Labelled);
         }
+    }
+
+    /// <summary>
+    /// Runs requirement extraction for the listed tenders (model calls on the Strong tier) and, with --extraction-template DIR,
+    /// writes or refreshes docs/golden/extraction/{ocid}.json with the extracted values beside empty labels for review.
+    /// </summary>
+    private async Task ExtractAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        var extractor = services.GetRequiredService<RequirementExtractor>();
+        var db = services.GetRequiredService<Application.Abstractions.Persistence.IAppDbContext>();
+        var logger = services.GetRequiredService<ILogger<WorkerCli>>();
+
+        var tenders = await context.TenderSet.AsNoTracking().Where(t => ExtractOcids.Contains(t.Ocid)).Select(t => new { t.Id, t.Ocid, t.BidNumber, t.Title }).ToListAsync(cancellationToken);
+        decimal cost = 0m;
+        int done = 0, failed = 0;
+        foreach (var tender in tenders)
+        {
+            try
+            {
+                var outcome = await extractor.ExtractAsync(tender.Id, cancellationToken);
+                cost += outcome.CostUsd;
+                done++;
+                logger.LogInformation("{Ocid}: {Count} requirement(s) from {Docs} document(s), {Verify} to verify, ${Cost} {Errors}", outcome.Ocid, outcome.Requirements, outcome.DocumentsProcessed, outcome.NeedsVerification, outcome.CostUsd, string.Join("; ", outcome.Errors));
+
+                if (ExtractionTemplatePath is not null)
+                {
+                    var stored = await db.Tenders.GetWithDetailsAsync(tender.Id, cancellationToken);
+                    var rows = await db.Tenders.GetRequirementsAsync(tender.Id, cancellationToken);
+                    var path = Path.Combine(ExtractionTemplatePath, $"{tender.Ocid}.json");
+                    var existing = File.Exists(path) ? System.Text.Json.JsonSerializer.Deserialize<ExtractionGoldenFile>(File.ReadAllText(path), ExtractionAccuracy.Json) : null;
+                    var file = new ExtractionGoldenFile(tender.Ocid, tender.BidNumber, tender.Title, existing?.Labels ?? ExtractionLabels.Empty, ExtractionAccuracy.FromStored(stored!, rows), existing?.Note);
+                    Directory.CreateDirectory(ExtractionTemplatePath);
+                    File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(file, ExtractionAccuracy.Json));
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failed++;
+                logger.LogError(ex, "Extraction of {Ocid} failed", tender.Ocid);
+            }
+        }
+
+        logger.LogInformation("Extracted {Done} tender(s), {Failed} failed, ${Cost} total, ${Average} average", done, failed, cost, done == 0 ? 0 : cost / done);
     }
 
     /// <summary>Classifies tenders by ocid or by publication window; --prefilter-only runs stage 1 alone (no model, no cost).</summary>

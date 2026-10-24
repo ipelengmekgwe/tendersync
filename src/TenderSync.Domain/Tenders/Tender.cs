@@ -61,6 +61,9 @@ public sealed class Tender : Entity
 
     public SubmissionMethod SubmissionMethod { get; private set; }
 
+    /// <summary>Plain-language summary of what is procured, written by requirement extraction (PLAN.md §7.4).</summary>
+    public string? Summary { get; private set; }
+
     public TenderStatus Status { get; private set; }
 
     public string? StatusReason { get; private set; }
@@ -212,6 +215,14 @@ public sealed class Tender : Entity
     }
 
     public void SetSubmissionMethod(SubmissionMethod method) => SubmissionMethod = method;
+
+    public void SetSummary(string? summary) => Summary = Guard.Trimmed(summary);
+
+    /// <summary>Raised by a reviewer's request; the Worker turns it into ExtractRequirementsJob.</summary>
+    public void RequestRequirementExtraction(DateTimeOffset now) => Raise(new TenderExtractionRequested(Id, Ocid, now));
+
+    /// <summary>Called by the extractor after the requirement rows were replaced.</summary>
+    public void MarkRequirementsExtracted(int requirementCount, DateTimeOffset now) => Raise(new RequirementsExtracted(Id, Ocid, requirementCount, now));
 
     public void SetProvince(Province province)
     {
