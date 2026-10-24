@@ -98,6 +98,11 @@ public static class WorkerServiceExtensions
         services.AddScoped<SendNotificationJob>();
         services.AddScoped<SweepNotificationsJob>();
         services.AddScoped<DailyDigestJob>();
+        services.AddScoped<RefreshActiveTendersJob>();
+        services.AddScoped<ComputeStatusJob>();
+        services.AddScoped<ClosingRemindersJob>();
+        services.AddScoped<BriefingRemindersJob>();
+        services.AddScoped<DocumentExpiryCheckJob>();
         services.AddScoped<IPipelineScheduler, HangfirePipelineScheduler>();
 
         return services;

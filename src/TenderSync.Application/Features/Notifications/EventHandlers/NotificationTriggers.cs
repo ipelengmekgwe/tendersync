@@ -139,14 +139,14 @@ public sealed class NotifyOnTenderChanged(IAppDbContext db, NotificationModelBui
     }
 }
 
-/// <summary>A cancelled matched tender is a TenderChanged message; an awarded one is AwardPublished (deduplicated with the release diff path).</summary>
+/// <summary>PLAN.md §7.7: Closed and Cancelled matched tenders are TenderChanged messages; Awarded is AwardPublished (deduplicated with the release diff path).</summary>
 public sealed class NotifyOnStatusChanged(IAppDbContext db, NotificationModelBuilder models, NotificationDispatcher dispatcher, IDateTimeProvider clock)
     : INotificationHandler<DomainEventNotification<TenderStatusChanged>>
 {
     public async Task Handle(DomainEventNotification<TenderStatusChanged> notification, CancellationToken cancellationToken)
     {
         var evt = notification.Event;
-        if (evt.To is not (TenderStatus.Cancelled or TenderStatus.Awarded))
+        if (evt.To is not (TenderStatus.Cancelled or TenderStatus.Awarded or TenderStatus.Closed))
         {
             return;
         }
@@ -163,15 +163,24 @@ public sealed class NotifyOnStatusChanged(IAppDbContext db, NotificationModelBui
             return;
         }
 
-        var type = evt.To == TenderStatus.Cancelled ? NotificationType.TenderChanged : NotificationType.AwardPublished;
+        var type = evt.To == TenderStatus.Awarded ? NotificationType.AwardPublished : NotificationType.TenderChanged;
         foreach (var match in matches.Where(m => m.Status != MatchStatus.Dismissed))
         {
             var profile = await db.CompanyProfiles.GetByIdAsync(match.CompanyProfileId, cancellationToken);
             var model = await models.ForTenderAsync(type, tender, profile, clock.UtcNow, cancellationToken);
-            model.Change = evt.To == TenderStatus.Cancelled
-                ? $"The tender was cancelled{(string.IsNullOrWhiteSpace(evt.Reason) ? string.Empty : ": " + evt.Reason)}."
-                : "The buyer published an award for this tender.";
-            await dispatcher.DispatchAsync(type, model, tender.Id, match.CompanyProfileId, evt.To == TenderStatus.Cancelled ? "cancelled" : null, false, cancellationToken);
+            model.Change = evt.To switch
+            {
+                TenderStatus.Cancelled => $"The tender was cancelled{(string.IsNullOrWhiteSpace(evt.Reason) ? string.Empty : ": " + evt.Reason)}.",
+                TenderStatus.Closed => $"The tender closed{(tender.ClosingAt is { } closing ? " on " + NotificationModel.Sast(closing) : string.Empty)}.",
+                _ => "The buyer published an award for this tender.",
+            };
+            var bucket = evt.To switch
+            {
+                TenderStatus.Cancelled => "cancelled",
+                TenderStatus.Closed => "closed:" + (tender.ClosingAt is { } c ? Domain.Tenders.ReminderBuckets.DateBucket(c) : "-"),
+                _ => null,
+            };
+            await dispatcher.DispatchAsync(type, model, tender.Id, match.CompanyProfileId, bucket, false, cancellationToken);
         }
     }
 }

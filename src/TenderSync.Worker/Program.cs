@@ -14,6 +14,10 @@ try
     var cli = WorkerCli.Parse(args);
     var builder = WebApplication.CreateBuilder(args);
 
+    // Optional per-developer overrides, git-ignored (appsettings.*.local.json). Loaded last, so they win over user-secrets and
+    // environment variables; put only the keys you mean to override in it.
+    builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.local.json", optional: true, reloadOnChange: true);
+
     if (cli.IsOneShot)
     {
         builder.Configuration["Hangfire:ServerEnabled"] = "false";

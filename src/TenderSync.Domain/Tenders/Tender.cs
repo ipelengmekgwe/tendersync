@@ -163,6 +163,12 @@ public sealed class Tender : Entity
             Raise(new TenderChanged(Id, Ocid, diff, now));
         }
 
+        // PLAN.md §7.7: the feed never sets a status, so cancellation is read from the wording of the release itself.
+        if (Status != TenderStatus.Cancelled && CancellationDetector.Detect(snapshot) is { } cancellation)
+        {
+            MarkCancelled(cancellation, now);
+        }
+
         return diff;
     }
 
