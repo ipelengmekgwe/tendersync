@@ -4,6 +4,7 @@ using TenderSync.Application.Features.Classification;
 using TenderSync.Application.Features.Classification.Golden;
 using TenderSync.Application.Features.Documents;
 using TenderSync.Application.Features.Qualification;
+using TenderSync.Application.Features.Status;
 using TenderSync.Application.Features.Requirements;
 using TenderSync.Application.Features.Requirements.Golden;
 using TenderSync.Infrastructure.Persistence;
@@ -20,7 +21,8 @@ namespace TenderSync.Worker;
 /// <c>--build-golden-set path [--golden-days N]</c> writes the classification review file (WP07);
 /// <c>--migrate-seed</c> applies migrations and reference-data seeding (the production migration job, PLAN.md §15);
 /// <c>--extract ocid[,ocid...] [--extraction-template docs/golden/extraction]</c> extracts requirements (WP08) and writes review templates;
-/// <c>--qualify ocid[,ocid...] [--qualify-report dir]</c> runs the qualification engine (WP09) and optionally writes each report's markdown.
+/// <c>--qualify ocid[,ocid...] [--qualify-report dir]</c> runs the qualification engine (WP09) and optionally writes each report's markdown;
+/// <c>--refresh-active</c>, <c>--compute-status</c> and <c>--reminders</c> run the WP11 status refresh, status derivation and the three reminder passes.
 /// The Hangfire server is not started in these modes.
 /// </summary>
 public sealed record WorkerCli(
@@ -37,9 +39,12 @@ public sealed record WorkerCli(
     IReadOnlyList<string> ExtractOcids,
     string? ExtractionTemplatePath,
     IReadOnlyList<string> QualifyOcids,
-    string? QualifyReportPath)
+    string? QualifyReportPath,
+    bool RefreshActive,
+    bool ComputeStatus,
+    bool Reminders)
 {
-    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed || ExtractOcids.Count > 0 || QualifyOcids.Count > 0;
+    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed || ExtractOcids.Count > 0 || QualifyOcids.Count > 0 || RefreshActive || ComputeStatus || Reminders;
 
     public static WorkerCli Parse(string[] args)
     {
@@ -55,6 +60,7 @@ public sealed record WorkerCli(
         string? extractionTemplate = null;
         var qualify = new List<string>();
         string? qualifyReport = null;
+        bool refreshActive = false, computeStatus = false, reminders = false;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -113,10 +119,19 @@ public sealed record WorkerCli(
                     qualifyReport = args[i + 1];
                     i++;
                     break;
+                case "--refresh-active":
+                    refreshActive = true;
+                    break;
+                case "--compute-status":
+                    computeStatus = true;
+                    break;
+                case "--reminders":
+                    reminders = true;
+                    break;
             }
         }
 
-        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed, extract, extractionTemplate, qualify, qualifyReport);
+        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed, extract, extractionTemplate, qualify, qualifyReport, refreshActive, computeStatus, reminders);
     }
 
     public async Task RunAsync(IServiceProvider services, CancellationToken cancellationToken)
@@ -163,6 +178,23 @@ public sealed record WorkerCli(
         if (QualifyOcids.Count > 0)
         {
             await QualifyAsync(scope.ServiceProvider, cancellationToken);
+        }
+
+        if (RefreshActive)
+        {
+            await scope.ServiceProvider.GetRequiredService<RefreshActiveTendersJob>().ExecuteAsync(cancellationToken);
+        }
+
+        if (ComputeStatus)
+        {
+            await scope.ServiceProvider.GetRequiredService<ComputeStatusJob>().ExecuteAsync(cancellationToken);
+        }
+
+        if (Reminders)
+        {
+            await scope.ServiceProvider.GetRequiredService<ClosingRemindersJob>().ExecuteAsync(cancellationToken);
+            await scope.ServiceProvider.GetRequiredService<BriefingRemindersJob>().ExecuteAsync(cancellationToken);
+            await scope.ServiceProvider.GetRequiredService<DocumentExpiryCheckJob>().ExecuteAsync(cancellationToken);
         }
 
         if (GoldenSetPath is not null)

@@ -86,6 +86,7 @@ public sealed class NotificationModel
 
     public static string Sast(DateTimeOffset value) => SouthAfricaTime.ToLocal(value).ToString("ddd d MMM yyyy HH:mm", CultureInfo.InvariantCulture) + " SAST";
 
+    /// <summary>"today", "tomorrow", "in N days" in South African calendar days (the same count the reminder buckets use), or "closed".</summary>
     public static string Relative(DateTimeOffset? closing, DateTimeOffset now)
     {
         if (closing is not { } at)
@@ -93,11 +94,15 @@ public sealed class NotificationModel
             return string.Empty;
         }
 
-        var days = (int)Math.Floor((at - now).TotalDays);
+        if (at <= now)
+        {
+            return "closed";
+        }
+
+        var days = Domain.Tenders.ReminderBuckets.DaysUntil(at, now);
         return days switch
         {
-            < 0 => "closed",
-            0 => "today",
+            <= 0 => "today",
             1 => "tomorrow",
             _ => $"in {days} days",
         };
@@ -109,6 +114,8 @@ public sealed record DigestItem(string BidNumber, string Title, string Buyer, st
 /// <summary>Builds the model from the aggregate and whatever match and report exist for the profile.</summary>
 public sealed class NotificationModelBuilder(IAppDbContext db, IOptions<NotificationOptions> options)
 {
+    public string DashboardUrl => options.Value.DashboardBaseUrl;
+
     public async Task<NotificationModel> ForTenderAsync(NotificationType type, Tender tender, CompanyProfile? profile, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(tender);

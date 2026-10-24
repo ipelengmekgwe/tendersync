@@ -77,7 +77,7 @@ public sealed class TenderIngestor(ITenderSource source, IAppDbContext db, IMuni
         return summary;
     }
 
-    /// <summary>Re-fetches one tender from the source and applies it (used by status refresh in WP11).</summary>
+    /// <summary>Re-fetches one tender from the source and applies it (RefreshActiveTendersJob, PLAN.md §7.7). Null when the source no longer knows the ocid.</summary>
     public async Task<IngestOutcome?> RefreshAsync(string ocid, CancellationToken cancellationToken = default)
     {
         var snapshot = await source.FetchByOcidAsync(ocid, cancellationToken);
@@ -116,6 +116,8 @@ public sealed class TenderIngestor(ITenderSource source, IAppDbContext db, IMuni
             tender.DeriveStatus(now);
             outcome = diff.HasChanges ? IngestOutcome.Changed : IngestOutcome.Unchanged;
         }
+
+        tender.MarkChecked(now);
 
         await db.SaveChangesAsync(cancellationToken);
         return outcome;

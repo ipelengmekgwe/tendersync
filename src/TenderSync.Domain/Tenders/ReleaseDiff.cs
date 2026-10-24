@@ -14,7 +14,13 @@ public sealed record ReleaseDiff(
 {
     public static ReleaseDiff Unchanged { get; } = new(false, [], [], [], null, null, false, false, false);
 
-    public bool ClosingChanged => OldClosingAt != NewClosingAt;
+    /// <summary>A moved closing date. Differences under a second are storage precision (timestamptz keeps microseconds), not a change.</summary>
+    public bool ClosingChanged => (OldClosingAt, NewClosingAt) switch
+    {
+        (null, null) => false,
+        (null, _) or (_, null) => true,
+        var (old, @new) => (old.Value - @new.Value).Duration() >= TimeSpan.FromSeconds(1),
+    };
 
     public bool HasChanges =>
         IsNew || NewDocumentIds.Count > 0 || RemovedDocumentIds.Count > 0 || ModifiedDocumentIds.Count > 0

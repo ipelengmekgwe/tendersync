@@ -12,6 +12,10 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    // Optional per-developer overrides, git-ignored (appsettings.*.local.json). Loaded last, so they win over user-secrets and
+    // environment variables; put only the keys you mean to override in it.
+    builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.local.json", optional: true, reloadOnChange: true);
+
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)

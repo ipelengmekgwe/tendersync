@@ -51,6 +51,10 @@ public static class DependencyInjection
         services.AddScoped<Features.Notifications.NotificationDispatcher>();
         services.AddScoped<Features.Notifications.NotificationSender>();
         services.AddScoped<Features.Notifications.DailyDigestBuilder>();
+        services.AddOptions<Features.Status.StatusOptions>(); // bound and validated by Infrastructure.AddETenders
+        services.AddScoped<Features.Status.TenderStatusRefresher>();
+        services.AddScoped<Features.Status.StatusComputer>();
+        services.AddScoped<Features.Status.ReminderService>();
         return services;
     }
 }

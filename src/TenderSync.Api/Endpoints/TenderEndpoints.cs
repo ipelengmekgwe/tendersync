@@ -7,6 +7,7 @@ using TenderSync.Application.Features.Requirements.Commands.RequestExtraction;
 using TenderSync.Application.Features.Qualification.Commands.RequestQualification;
 using TenderSync.Application.Features.Qualification.Queries.GetTenderQualification;
 using TenderSync.Application.Features.Requirements.Queries.GetTenderRequirements;
+using TenderSync.Application.Features.Status.Queries.GetTenderHistory;
 using TenderSync.Application.Features.Tenders;
 using TenderSync.Application.Features.Tenders.Queries.GetTender;
 using TenderSync.Application.Features.Tenders.Queries.ListTenders;
@@ -67,6 +68,12 @@ public static class TenderEndpoints
                 TypedResults.Ok(await sender.Send(new GetTenderQuery(id), ct)))
             .WithSummary("Tender detail with buyer, documents, classification and status history.")
             .Produces<TenderDetailDto>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id:guid}/history", async (Guid id, ISender sender, CancellationToken ct) =>
+                TypedResults.Ok(await sender.Send(new GetTenderHistoryQuery(id), ct)))
+            .WithSummary("Status transitions, releases seen and notifications sent for a tender.")
+            .Produces<TenderHistoryDto>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/{id:guid}/reclassify", async (Guid id, bool? prefilterOnly, ISender sender, CancellationToken ct) =>

@@ -23,8 +23,10 @@ public static class ETendersServiceExtensions
     public static IServiceCollection AddETenders(this IServiceCollection services, IConfiguration? configuration = null)
     {
         var optionsBuilder = services.AddOptions<ETendersOptions>();
+        var status = services.AddOptions<TenderSync.Application.Features.Status.StatusOptions>();
         if (configuration is not null)
         {
+            status.Bind(configuration.GetSection(TenderSync.Application.Features.Status.StatusOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
             optionsBuilder.Bind(configuration.GetSection(ETendersOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
         }
 
