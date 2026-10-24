@@ -100,6 +100,20 @@ dotnet user-secrets set "Seed:AdminPassword" "<at least 12 characters>" --projec
 
 The Worker needs the same `Jwt:SigningKey` (its own user-secrets id is `tendersync-worker`) so dashboard tokens issued by the API validate there.
 
+To see what is set for a project, list its secrets (values are shown in full, so do this in a private terminal):
+
+```bash
+dotnet user-secrets list --project src/TenderSync.Api
+```
+
+```bash
+dotnet user-secrets list --project src/TenderSync.Worker
+```
+
+The stores are plain JSON files at `%APPDATA%\Microsoft\UserSecrets\tendersync-api\secrets.json` and `...\tendersync-worker\secrets.json` (the ids come from `UserSecretsId` in each csproj); in Visual Studio, right-click the project and choose **Manage User Secrets** to open the same file. `dotnet user-secrets remove "Key"` and `dotnet user-secrets clear` undo entries.
+
+As an alternative for local testing, each host also loads an optional, git-ignored `appsettings.Development.local.json` next to its `appsettings.json` (any `appsettings.*.local.json` is ignored). It is read last, so its values win over user-secrets and environment variables; include only the keys you mean to override, because an empty string there blanks a secret. The file in each project folder holds commented examples.
+
 In Development the API applies migrations and seeds on start (`Database:MigrateOnStartup` / `Database:SeedOnStartup` in `appsettings.Development.json`); the Worker never migrates, so start the API once before the Worker on a fresh database. Then sign in at `/scalar` with `POST /api/v1/auth/login` and paste the access token into Authorize.
 
 ## Prerequisites
@@ -119,7 +133,7 @@ dotnet run --project src/TenderSync.Api
 
 | Service | URL |
 |---|---|
-| API | http://localhost:5000 (Scalar at `/scalar` from WP02) |
+| API | http://localhost:5000 (Scalar at `/scalar`; the Visual Studio profile opens it on start) |
 | Worker | http://localhost:5001 (Hangfire at `/hangfire` from WP05) |
 | Seq logs | http://localhost:5341 |
 | PostgreSQL | `localhost:5432`, database `tendersync` |
