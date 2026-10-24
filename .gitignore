@@ -31,7 +31,7 @@ appsettings.*.local.json
 
 # Docker volumes and local data
 deploy/docker/data/
-documents/
+/data/
 
 # OS
 .DS_Store

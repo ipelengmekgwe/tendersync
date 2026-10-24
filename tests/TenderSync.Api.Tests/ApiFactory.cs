@@ -30,6 +30,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         .WithPassword("tendersync")
         .Build();
 
+    public string DocumentRoot { get; } = Path.Combine(Path.GetTempPath(), "tendersync-api-tests", Guid.NewGuid().ToString("N"));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -45,6 +47,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["RateLimiting:Auth:PermitLimit"] = "1000",
             ["Serilog:WriteTo:1:Name"] = "Console",
             ["Serilog:MinimumLevel:Default"] = "Warning",
+            ["DocumentStore:Provider"] = "FileSystem",
+            ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
         }));
     }
 
@@ -67,6 +71,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         await _db.DisposeAsync();
+        if (Directory.Exists(DocumentRoot))
+        {
+            Directory.Delete(DocumentRoot, recursive: true);
+        }
     }
 
     public async Task<AuthResponse> LoginAsync(string email, string password)

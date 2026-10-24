@@ -7,9 +7,12 @@ using Microsoft.IdentityModel.Tokens;
 using TenderSync.Api.Infrastructure;
 using TenderSync.Api.Security;
 using TenderSync.Application.Abstractions;
+using TenderSync.Application.Abstractions.Jobs;
+using TenderSync.Application.Jobs;
 using TenderSync.Application.Security;
 using TenderSync.Infrastructure.Identity;
 using TenderSync.Infrastructure.Persistence;
+using TenderSync.Infrastructure.Storage;
 
 namespace TenderSync.Api.Extensions;
 
@@ -90,7 +93,11 @@ public static class ApiServiceExtensions
         services.AddOpenApi("v1", options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 
         services.AddHealthChecks()
-            .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
+            .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
+            .AddCheck<DocumentStoreHealthCheck>("document-store", tags: ["ready"]);
+
+        // The API never dispatches outbox events, so the event handlers that enqueue pipeline jobs are never invoked here.
+        services.AddSingleton<IPipelineScheduler, NoPipelineScheduler>();
 
         return services;
     }

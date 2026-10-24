@@ -14,6 +14,8 @@ WP05 adds the Worker host: Hangfire on PostgreSQL (schema `hangfire`) with the `
 
 WP03 adds ingestion from the eTenders OCDS API: a resilient client (timeouts, retries, circuit breaker), the OCDS-to-tender mapper, JSON-schema drift detection, and the `IngestRecentReleases` (every 30 minutes), `BackfillReleases` (weekly) and `SourceHealthCheck` (every 15 minutes) jobs. Admins can read `/api/v1/admin/source-health` and `/api/v1/admin/jobs/runs`.
 
+WP04 adds bid-pack documents: `DownloadTenderDocumentsJob` fetches every file of a tender through a throttled client (two concurrent downloads, 500 ms apart, 50 MB cap, audio/video skipped, magic-byte sniffing, sha256) into the document store at `tenders/{ocid}/{documentId}.{ext}`, and `ExtractDocumentTextJob` turns PDF (PdfPig), Word (Open XML), Excel (ClosedXML, ExcelDataReader for `.xls`) and zip archives (two levels deep) into per-page rows in `document_texts`. A PDF averaging fewer than 50 characters per page is flagged `needs_ocr`. Downloads run for matched tenders (WP07) and on request: `POST /api/v1/tenders/{id}/documents/download` (Reviewer) raises `TenderDocumentsRequested`, which the Worker's outbox turns into the job. `GET /api/v1/tenders/{id}/documents`, `.../documents/{docId}/download` (streams the stored copy) and `.../documents/{docId}/text` read the results. The store is the local filesystem by default (`%LOCALAPPDATA%/TenderSync/documents`, shared by the API and Worker) or Azure Blob (`DocumentStore:Provider=AzureBlob`); both are tested with the same round trip, Azure through an Azurite container. The pipeline queue has its own Hangfire server with `Hangfire:PipelineWorkerCount` workers (default 2).
+
 One-shot operator modes on the Worker (no Hangfire server is started):
 
 ```bash
@@ -27,6 +29,12 @@ dotnet run --project src/TenderSync.Worker -- --backfill-days 90
 ```bash
 dotnet run --project src/TenderSync.Worker -- --probe
 ```
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --download-documents ocds-9t57fa-175186,ocds-9t57fa-175322
+```
+
+The last one downloads and extracts the bid packs of the listed tenders inline and logs one line per document, which is how the WP04 acceptance rate was measured.
 
 Integration tests start a PostgreSQL 17 container through Testcontainers, so Docker must be running for `dotnet test`.
 

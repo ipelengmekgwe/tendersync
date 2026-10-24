@@ -4,9 +4,11 @@ using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using TenderSync.Application.Abstractions;
+using TenderSync.Application.Abstractions.Jobs;
 using TenderSync.Application.Security;
 using TenderSync.Infrastructure.Identity;
 using TenderSync.Infrastructure.Persistence;
+using TenderSync.Infrastructure.Storage;
 using TenderSync.Worker.Infrastructure;
 using TenderSync.Worker.Jobs;
 
@@ -38,15 +40,9 @@ public static class WorkerServiceExtensions
                     QueuePollInterval = TimeSpan.FromSeconds(configuration.GetValue("Hangfire:QueuePollSeconds", 5)),
                 }));
 
-        if (configuration.GetValue("Hangfire:ServerEnabled", true))
-        {
-            services.AddHangfireServer(options =>
-            {
-                options.ServerName = $"{Environment.MachineName}:worker";
-                options.Queues = JobQueues.All;
-                options.WorkerCount = configuration.GetValue("Hangfire:WorkerCount", Math.Max(2, Environment.ProcessorCount));
-            });
-        }
+        // Servers start in HangfireServersHostedService, which reads Hangfire:ServerEnabled / WorkerCount / PipelineWorkerCount
+        // when the host starts, so WebApplicationFactory overrides apply (an eager read here would ignore them).
+        services.AddHostedService<HangfireServersHostedService>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -86,12 +82,16 @@ public static class WorkerServiceExtensions
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
-            .AddCheck<HangfireStorageHealthCheck>("hangfire", tags: ["ready"]);
+            .AddCheck<HangfireStorageHealthCheck>("hangfire", tags: ["ready"])
+            .AddCheck<DocumentStoreHealthCheck>("document-store", tags: ["ready"]);
 
         services.AddScoped<ProcessOutboxJob>();
         services.AddScoped<IngestRecentReleasesJob>();
         services.AddScoped<BackfillReleasesJob>();
         services.AddScoped<SourceHealthCheckJob>();
+        services.AddScoped<DownloadTenderDocumentsJob>();
+        services.AddScoped<ExtractDocumentTextJob>();
+        services.AddScoped<IPipelineScheduler, HangfirePipelineScheduler>();
 
         return services;
     }
