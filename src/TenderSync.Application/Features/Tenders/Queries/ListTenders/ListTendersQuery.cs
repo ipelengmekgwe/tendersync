@@ -25,6 +25,8 @@ public sealed record ListTendersQuery(
     DateTimeOffset? ClosingFrom = null,
     DateTimeOffset? ClosingTo = null,
     bool MatchedOnly = false,
+    bool NearMissesOnly = false,
+    int? MinRelevance = null,
     TenderSort Sort = TenderSort.ClosingSoonest,
     int Page = 1,
     int PageSize = Paging.DefaultPageSize) : IQuery<PagedResult<TenderListItemDto>>;
@@ -36,12 +38,13 @@ public sealed class ListTendersQueryValidator : AbstractValidator<ListTendersQue
         RuleFor(q => q.Q).MaximumLength(200);
         RuleFor(q => q.Page).GreaterThanOrEqualTo(1);
         RuleFor(q => q.PageSize).InclusiveBetween(1, Paging.MaxPageSize);
+        RuleFor(q => q.MinRelevance).InclusiveBetween(0, 100).When(q => q.MinRelevance is not null);
         RuleFor(q => q).Must(q => q.ClosingFrom is null || q.ClosingTo is null || q.ClosingFrom <= q.ClosingTo)
             .WithMessage("closingFrom must be on or before closingTo.");
     }
 }
 
-public sealed class ListTendersQueryHandler(IReadDb db) : IRequestHandler<ListTendersQuery, PagedResult<TenderListItemDto>>
+public sealed class ListTendersQueryHandler(IReadDb db, Microsoft.Extensions.Options.IOptions<Classification.ClassificationOptions> classification) : IRequestHandler<ListTendersQuery, PagedResult<TenderListItemDto>>
 {
     private const string BaseSql = """
         select
@@ -57,6 +60,7 @@ public sealed class ListTendersQueryHandler(IReadDb db) : IRequestHandler<ListTe
             t.closing_at,
             t.status,
             c.relevance,
+            coalesce(c.category_codes, '{}') as category_codes,
             (select m.status from tendersync.tender_matches m where m.tender_id = t.id order by m.created_at desc limit 1) as match_status,
             (select count(*) from tendersync.tender_documents d where d.tender_id = t.id)::int as document_count,
             count(*) over() as total_count
@@ -70,6 +74,8 @@ public sealed class ListTendersQueryHandler(IReadDb db) : IRequestHandler<ListTe
           and (@closingFrom::timestamptz is null or t.closing_at >= @closingFrom)
           and (@closingTo::timestamptz is null or t.closing_at <= @closingTo)
           and (@matchedOnly = false or exists (select 1 from tendersync.tender_matches m where m.tender_id = t.id))
+          and (@nearMissesOnly = false or (c.relevance >= @nearMiss and c.relevance < @matchThreshold and not exists (select 1 from tendersync.tender_matches m where m.tender_id = t.id)))
+          and (@minRelevance::int is null or c.relevance >= @minRelevance)
         """;
 
     public async Task<PagedResult<TenderListItemDto>> Handle(ListTendersQuery request, CancellationToken cancellationToken)
@@ -92,6 +98,10 @@ public sealed class ListTendersQueryHandler(IReadDb db) : IRequestHandler<ListTe
             closingFrom = request.ClosingFrom,
             closingTo = request.ClosingTo,
             matchedOnly = request.MatchedOnly,
+            nearMissesOnly = request.NearMissesOnly,
+            nearMiss = classification.Value.NearMissThreshold,
+            matchThreshold = classification.Value.MatchThreshold,
+            minRelevance = request.MinRelevance,
             pageSize = request.PageSize,
             offset = Paging.Offset(request.Page, request.PageSize),
         }, cancellationToken);
@@ -103,7 +113,7 @@ public sealed class ListTendersQueryHandler(IReadDb db) : IRequestHandler<ListTe
 
         var items = rows.Select(r => new TenderListItemDto(
             r.Id, r.Ocid, r.BidNumber, r.Title, r.BuyerName, (Province)r.Province, (ProcurementCategory)r.MainCategory,
-            r.ProcurementMethodDetails, r.PublishedAt, r.ClosingAt, (TenderStatus)r.Status, r.Relevance,
+            r.ProcurementMethodDetails, r.PublishedAt, r.ClosingAt, (TenderStatus)r.Status, r.Relevance, r.CategoryCodes,
             r.MatchStatus is null ? null : (MatchStatus)r.MatchStatus.Value, r.DocumentCount)).ToList();
 
         return new PagedResult<TenderListItemDto>(items, request.Page, request.PageSize, (int)rows[0].TotalCount);
@@ -134,6 +144,8 @@ public sealed class ListTendersQueryHandler(IReadDb db) : IRequestHandler<ListTe
         public int Status { get; init; }
 
         public int? Relevance { get; init; }
+
+        public string[] CategoryCodes { get; init; } = [];
 
         public int? MatchStatus { get; init; }
 

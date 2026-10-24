@@ -18,6 +18,8 @@ WP04 adds bid-pack documents: `DownloadTenderDocumentsJob` fetches every file of
 
 WP06 adds the AI layer (PLAN.md §8): one `ILlmClient` that every feature injects, routed per purpose (`Llm:Routing:{purpose}` = `anthropic`, `openai` or `fake`, default `Llm:DefaultProvider`). The Anthropic adapter uses the official SDK with structured outputs (the JSON schema is generated from the C# response type), native PDF input with page citations, adaptive thinking at the request's effort, server-side refusal fallbacks and a cached system prompt; the OpenAI-compatible adapter speaks chat-completions with `response_format: json_schema` and sends documents as extracted text (Azure OpenAI, OpenRouter, Ollama). Every call writes an `llm_calls` row with tokens and USD (prices from `Llm:Pricing`, Anthropic list prices built in); `Llm:DailyCostCapUsd` (default 10) stops calls for the rest of the SAST day and raises one `PipelineFailure`. Prompts are versioned files under `src/TenderSync.Application/Prompts/{purpose}/v{n}.md` loaded by `PromptRegistry`. `GET /api/v1/admin/llm-calls` summarises spend by day, purpose and model; `LlmCostRollupJob` records the daily total at 23:55. Set `Llm:Anthropic:ApiKey` in user-secrets; without any key, route to `fake` (`FakeLlmClient` answers from canned JSON). The live smoke test in `tests/TenderSync.Evals` runs only with `TENDERSYNC_EVALS=1` and a key.
 
+WP07 adds classification and matching (PLAN.md §7.2). Stage 1 is `KeywordPrefilter`: per enabled interest category, whole-word keyword hits weighted by field (title ×3, description ×1, document titles ×2) minus negative and global-negative hits ×2; a category at score 1 or more, or a services/unspecified tender procured by RFP or RFI, goes to stage 2. Stage 2 sends the tender text and the category list to the model with the `classify/v1` prompt and gets `{categories, relevance 0–100, isItServices, rationale, redFlags}` back as structured output. The result lands in `tender_classifications`; relevance at or above `Classification:MatchThreshold` (60) creates a `TenderMatch` for every active company profile whose capability categories overlap (an empty capability list matches everything), which raises `TenderMatched` for notifications and document download; 40–59 is a near miss (`GET /api/v1/tenders?nearMisses=true`). `ClassifyTenderJob` runs for every new tender and again when its text changes; `POST /api/v1/tenders/{id}/reclassify` (Reviewer) runs it on demand and `POST /api/v1/interest-categories/test` (Admin) dry-runs stage 1 on a tender or free text. The review file for the eval lives at `docs/golden/classification.jsonl` (set `isItMatch` per row); `tests/TenderSync.Evals` then reports stage-1 recall always and stage-2 precision/recall with `TENDERSYNC_EVALS=1` and a key.
+
 One-shot operator modes on the Worker (no Hangfire server is started):
 
 ```bash
@@ -37,6 +39,20 @@ dotnet run --project src/TenderSync.Worker -- --download-documents ocds-9t57fa-1
 ```
 
 The last one downloads and extracts the bid packs of the listed tenders inline and logs one line per document, which is how the WP04 acceptance rate was measured.
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --classify-days 7 --prefilter-only
+```
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --classify ocds-9t57fa-175186,ocds-9t57fa-175322
+```
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --build-golden-set docs/golden/classification.jsonl --golden-days 30
+```
+
+`--classify-days` without `--prefilter-only` calls the model for every stage-1 candidate (about a quarter of releases, under a cent each on Haiku). The golden-set builder keeps existing labels when the file is rebuilt.
 
 Integration tests start a PostgreSQL 17 container through Testcontainers, so Docker must be running for `dotnet test`.
 

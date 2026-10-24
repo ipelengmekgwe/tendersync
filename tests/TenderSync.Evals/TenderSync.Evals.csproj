@@ -5,4 +5,7 @@
     <ProjectReference Include="../../src/TenderSync.Application/TenderSync.Application.csproj" />
     <ProjectReference Include="../../src/TenderSync.Infrastructure/TenderSync.Infrastructure.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="../../docs/golden/*.jsonl" Link="golden/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

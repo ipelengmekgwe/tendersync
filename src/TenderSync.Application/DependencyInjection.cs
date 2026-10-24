@@ -36,6 +36,10 @@ public static class DependencyInjection
         services.AddScoped<Abstractions.Llm.ILlmCostRecorder, Features.Llm.LlmCostRecorder>();
         services.AddScoped<Features.Llm.LlmCostCap>();
         services.AddScoped<Abstractions.Llm.ILlmClient, Features.Llm.GuardedLlmClient>();
+        services.AddOptions<Features.Classification.ClassificationOptions>(); // bound and validated by Infrastructure.AddClassification
+        services.AddSingleton<Features.Classification.KeywordPrefilter>();
+        services.AddScoped<Features.Classification.TenderClassifier>();
+        services.AddScoped<Features.Classification.Golden.GoldenSetBuilder>();
         return services;
     }
 }

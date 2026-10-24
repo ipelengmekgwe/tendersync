@@ -1,7 +1,10 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using TenderSync.Application.Features.Classification;
+using TenderSync.Application.Features.Classification.Golden;
 using TenderSync.Application.Features.Documents;
 using TenderSync.Infrastructure.Persistence;
+using TenderSync.Infrastructure.Persistence.Seed;
 using TenderSync.Worker.Jobs;
 
 namespace TenderSync.Worker;
@@ -9,18 +12,36 @@ namespace TenderSync.Worker;
 /// <summary>
 /// One-shot command line modes for operators (PLAN.md WP03/WP04): <c>--ingest-days N</c> ingests the last N days and exits;
 /// <c>--backfill-days N</c> does the same in weekly slices; <c>--probe</c> runs the source health check;
-/// <c>--download-documents ocid[,ocid...]</c> downloads and extracts the bid packs of those tenders inline (no Hangfire).
+/// <c>--download-documents ocid[,ocid...]</c> downloads and extracts the bid packs of those tenders inline (no Hangfire);
+/// <c>--classify-days N</c> or <c>--classify ocid[,ocid...]</c> runs classification (add <c>--prefilter-only</c> to skip the model);
+/// <c>--build-golden-set path [--golden-days N]</c> writes the classification review file (WP07);
+/// <c>--migrate-seed</c> applies migrations and reference-data seeding (the production migration job, PLAN.md §15).
 /// The Hangfire server is not started in these modes.
 /// </summary>
-public sealed record WorkerCli(int? IngestDays, int? BackfillDays, bool Probe, IReadOnlyList<string> DownloadDocumentsFor)
+public sealed record WorkerCli(
+    int? IngestDays,
+    int? BackfillDays,
+    bool Probe,
+    IReadOnlyList<string> DownloadDocumentsFor,
+    int? ClassifyDays,
+    IReadOnlyList<string> ClassifyOcids,
+    bool PrefilterOnly,
+    string? GoldenSetPath,
+    int GoldenDays,
+    bool MigrateAndSeed)
 {
-    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0;
+    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed;
 
     public static WorkerCli Parse(string[] args)
     {
-        int? ingest = null, backfill = null;
+        int? ingest = null, backfill = null, classifyDays = null;
         var probe = false;
+        var prefilterOnly = false;
         var ocids = new List<string>();
+        var classify = new List<string>();
+        string? golden = null;
+        var goldenDays = 30;
+        var migrateSeed = false;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -41,15 +62,44 @@ public sealed record WorkerCli(int? IngestDays, int? BackfillDays, bool Probe, I
                     ocids.AddRange(args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                     i++;
                     break;
+                case "--classify-days" when i + 1 < args.Length && int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var c):
+                    classifyDays = c;
+                    i++;
+                    break;
+                case "--classify" when i + 1 < args.Length:
+                    classify.AddRange(args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    i++;
+                    break;
+                case "--prefilter-only":
+                    prefilterOnly = true;
+                    break;
+                case "--build-golden-set" when i + 1 < args.Length:
+                    golden = args[i + 1];
+                    i++;
+                    break;
+                case "--golden-days" when i + 1 < args.Length && int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var g):
+                    goldenDays = g;
+                    i++;
+                    break;
+                case "--migrate-seed":
+                    migrateSeed = true;
+                    break;
             }
         }
 
-        return new WorkerCli(ingest, backfill, probe, ocids);
+        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed);
     }
 
     public async Task RunAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
         using var scope = services.CreateScope();
+
+        if (MigrateAndSeed)
+        {
+            // PLAN.md §15: production runs migrations from a one-shot job rather than on API start.
+            await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync(cancellationToken);
+            await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync(cancellationToken);
+        }
 
         if (Probe)
         {
@@ -70,6 +120,59 @@ public sealed record WorkerCli(int? IngestDays, int? BackfillDays, bool Probe, I
         {
             await DownloadDocumentsAsync(scope.ServiceProvider, cancellationToken);
         }
+
+        if (ClassifyDays is not null || ClassifyOcids.Count > 0)
+        {
+            await ClassifyAsync(scope.ServiceProvider, cancellationToken);
+        }
+
+        if (GoldenSetPath is not null)
+        {
+            var summary = await scope.ServiceProvider.GetRequiredService<GoldenSetBuilder>().BuildAsync(GoldenSetPath, GoldenDays, targetRows: 250, cancellationToken);
+            scope.ServiceProvider.GetRequiredService<ILogger<WorkerCli>>().LogInformation(
+                "Golden set {Path}: scanned {Scanned} tender(s), {Candidates} prefilter candidate(s), wrote {Rows} row(s), {Labelled} labelled",
+                summary.Path, summary.TendersScanned, summary.PrefilterCandidates, summary.RowsWritten, summary.Labelled);
+        }
+    }
+
+    /// <summary>Classifies tenders by ocid or by publication window; --prefilter-only runs stage 1 alone (no model, no cost).</summary>
+    private async Task ClassifyAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        var classifier = services.GetRequiredService<TenderClassifier>();
+        var logger = services.GetRequiredService<ILogger<WorkerCli>>();
+
+        var query = context.TenderSet.AsNoTracking();
+        query = ClassifyOcids.Count > 0 ? query.Where(t => ClassifyOcids.Contains(t.Ocid)) : query.Where(t => t.PublishedAt >= DateTimeOffset.UtcNow.AddDays(-ClassifyDays!.Value));
+        var ids = await query.OrderBy(t => t.PublishedAt).Select(t => new { t.Id, t.Ocid }).ToListAsync(cancellationToken);
+
+        int candidates = 0, llm = 0, matches = 0, nearMisses = 0, failed = 0;
+        decimal cost = 0m;
+        foreach (var tender in ids)
+        {
+            try
+            {
+                var outcome = await classifier.ClassifyAsync(tender.Id, PrefilterOnly, cancellationToken);
+                candidates += outcome.Candidate ? 1 : 0;
+                llm += outcome.Stage == Domain.Enums.ClassificationStage.Llm ? 1 : 0;
+                matches += outcome.MatchesCreated;
+                nearMisses += outcome.IsNearMiss ? 1 : 0;
+                cost += outcome.CostUsd;
+                if (outcome.Candidate)
+                {
+                    logger.LogInformation("{Ocid} {Stage} relevance {Relevance} [{Codes}] {Reason}", outcome.Ocid, outcome.Stage, outcome.Relevance, string.Join(",", outcome.CategoryCodes), outcome.Reason);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failed++;
+                logger.LogError(ex, "Classification of {Ocid} failed", tender.Ocid);
+            }
+        }
+
+        logger.LogInformation(
+            "Classified {Total} tender(s): {Candidates} stage-1 candidates, {Llm} model calls, {Matches} new match(es), {NearMisses} near miss(es), {Failed} failed, ${Cost}",
+            ids.Count, candidates, llm, matches, nearMisses, failed, cost);
     }
 
     /// <summary>Download then extract, synchronously, printing one line per document so an operator can judge the acceptance rate.</summary>
