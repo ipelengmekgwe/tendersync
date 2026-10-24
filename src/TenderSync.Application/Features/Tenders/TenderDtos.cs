@@ -1,4 +1,5 @@
 using TenderSync.Domain.Enums;
+using TenderSync.Domain.Tenders;
 
 namespace TenderSync.Application.Features.Tenders;
 
@@ -26,7 +27,21 @@ public sealed record TenderDocumentDto(
     DocumentStatus Status,
     int? PageCount,
     bool NeedsOcr,
-    DateTimeOffset? DatePublished);
+    DateTimeOffset? DatePublished,
+    DateTimeOffset? DateModified,
+    long? SizeBytes,
+    string? Sha256,
+    DateTimeOffset? DownloadedAt,
+    DateTimeOffset? ExtractedAt,
+    string? Error)
+{
+    /// <summary>True when the API can stream a stored copy (GET .../documents/{docId}/download).</summary>
+    public bool Stored => DownloadedAt is not null;
+
+    public static TenderDocumentDto From(TenderDocument d) => new(
+        d.Id, d.Title, d.Url, d.Format, d.Status, d.PageCount, d.NeedsOcr, d.DatePublished, d.DateModified,
+        d.SizeBytes, d.Sha256, d.DownloadedAt, d.ExtractedAt, d.Error);
+}
 
 public sealed record TenderClassificationDto(ClassificationStage Stage, IReadOnlyList<string> CategoryCodes, int Relevance, string? Rationale, DateTimeOffset ClassifiedAt);
 

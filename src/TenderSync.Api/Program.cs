@@ -45,6 +45,7 @@ try
     app.MapHealthEndpoints();
     app.MapAuthEndpoints();
     app.MapTenderEndpoints();
+    app.MapDocumentEndpoints();
     app.MapAdminEndpoints();
 
     await app.MigrateAndSeedAsync();

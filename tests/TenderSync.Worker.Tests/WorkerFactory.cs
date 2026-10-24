@@ -13,6 +13,7 @@ using TenderSync.Application.Abstractions.Identity;
 using TenderSync.Application.Common.Events;
 using TenderSync.Application.Security;
 using TenderSync.Domain.Events;
+using TenderSync.Infrastructure.Documents;
 using TenderSync.Infrastructure.Identity;
 using TenderSync.Infrastructure.Persistence;
 using TenderSync.Infrastructure.Persistence.Seed;
@@ -39,6 +40,10 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
 
     public RecordingHandler Recorded { get; } = new();
 
+    public FakeFileServer Downloads { get; } = new();
+
+    public string DocumentRoot { get; } = Path.Combine(Path.GetTempPath(), "tendersync-worker-tests", Guid.NewGuid().ToString("N"));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -51,10 +56,15 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
             ["Seed:AdminPassword"] = AdminPassword,
             ["Serilog:WriteTo:1:Name"] = "Console",
             ["Serilog:MinimumLevel:Default"] = "Warning",
+            ["DocumentStore:Provider"] = "FileSystem",
+            ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
+            ["Documents:DownloadSpacingMs"] = "0",
         }));
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton(Recorded);
+            // Bid-pack downloads go to the fake eTenders file server instead of the internet.
+            services.AddHttpClient(HttpDocumentDownloader.ClientName).ConfigurePrimaryHttpMessageHandler(() => Downloads);
             services.AddTransient<INotificationHandler<DomainEventNotification<TenderFirstSeen>>>(sp => sp.GetRequiredService<RecordingHandler>());
         });
     }
@@ -89,6 +99,10 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
     {
         await base.DisposeAsync();
         await _db.DisposeAsync();
+        if (Directory.Exists(DocumentRoot))
+        {
+            Directory.Delete(DocumentRoot, recursive: true);
+        }
     }
 
     /// <summary>Mints an access token the way the API would, without an HTTP login (the worker has no login endpoint).</summary>
@@ -106,6 +120,30 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await AccessTokenForAsync(email, password));
         return client;
+    }
+}
+
+/// <summary>Serves bytes for eTenders download URLs by their blobName query parameter; anything else is a 404.</summary>
+public sealed class FakeFileServer : HttpMessageHandler
+{
+    private readonly Dictionary<string, (byte[] Bytes, string ContentType)> _files = new(StringComparer.OrdinalIgnoreCase);
+
+    public int Requests { get; private set; }
+
+    public void Add(string blobName, byte[] bytes, string contentType) => _files[blobName] = (bytes, contentType);
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        Requests++;
+        var query = System.Web.HttpUtility.ParseQueryString(request.RequestUri!.Query);
+        if (query["blobName"] is { } blob && _files.TryGetValue(blob, out var file))
+        {
+            var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(file.Bytes) };
+            response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            return Task.FromResult(response);
+        }
+
+        return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
     }
 }
 

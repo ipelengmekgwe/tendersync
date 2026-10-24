@@ -280,6 +280,26 @@ public sealed class Tender : Entity
         // Documents withdrawn by the buyer are kept (with their files) so the history stays complete.
     }
 
+    /// <summary>
+    /// Queues every document that is not yet downloaded (Pending, Failed or Skipped) for the download pipeline and raises
+    /// <see cref="TenderDocumentsRequested"/> so the worker picks it up. Downloaded and extracted files are left alone.
+    /// Returns the number of documents queued.
+    /// </summary>
+    public int RequestDocumentDownload(DateTimeOffset now)
+    {
+        var pending = 0;
+        foreach (var document in _documents)
+        {
+            if (document.ResetForDownload())
+            {
+                pending++;
+            }
+        }
+
+        Raise(new TenderDocumentsRequested(Id, Ocid, pending, now));
+        return pending;
+    }
+
     private void Transition(TenderStatus to, string? reason, DateTimeOffset now)
     {
         if (Status == to)

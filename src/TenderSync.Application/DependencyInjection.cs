@@ -27,6 +27,9 @@ public static class DependencyInjection
         services.AddScoped<Jobs.JobRunner>();
         services.AddScoped<Jobs.OutboxProcessor>();
         services.AddScoped<Features.Ingest.TenderIngestor>();
+        services.AddScoped<Features.Documents.TenderDocumentDownloader>();
+        services.AddScoped<Features.Documents.DocumentTextExtraction>();
+        services.AddOptions<Features.Documents.DocumentOptions>(); // bound and validated by Infrastructure.AddDocumentProcessing
         return services;
     }
 }

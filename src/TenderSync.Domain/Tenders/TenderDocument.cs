@@ -76,6 +76,19 @@ public sealed class TenderDocument : Entity
         return changed;
     }
 
+    /// <summary>Puts a document that never made it to storage back on the queue. Returns false when it is already downloaded or extracted.</summary>
+    internal bool ResetForDownload()
+    {
+        if (Status is DocumentStatus.Downloaded or DocumentStatus.Extracted)
+        {
+            return false;
+        }
+
+        Status = DocumentStatus.Pending;
+        Error = null;
+        return true;
+    }
+
     public void MarkDownloaded(string storagePath, string sha256, long sizeBytes, DateTimeOffset now)
     {
         StoragePath = Guard.NotEmpty(storagePath, nameof(storagePath));
