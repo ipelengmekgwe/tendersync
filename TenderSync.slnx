@@ -59,6 +59,12 @@
     <Project Path="src/TenderSync.Infrastructure/TenderSync.Infrastructure.csproj" />
     <Project Path="src/TenderSync.Worker/TenderSync.Worker.csproj" />
   </Folder>
+  <Folder Name="/web/">
+    <Project Path="web/TenderSync.Web.esproj">
+      <Build />
+      <Deploy />
+    </Project>
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TenderSync.Api.Tests/TenderSync.Api.Tests.csproj" />
     <Project Path="tests/TenderSync.Application.Tests/TenderSync.Application.Tests.csproj" />

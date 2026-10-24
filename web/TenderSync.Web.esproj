@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.7173973">
+  <!--
+    Visual Studio's JavaScript project system wrapper for the Next.js dashboard, so the folder shows in Solution Explorer
+    with its npm scripts. The app itself is driven by package.json; nothing here is needed by npm, Docker or CI, and
+    removing this file plus its line in TenderSync.slnx reverts the integration completely.
+  -->
+  <PropertyGroup>
+    <StartupCommand>npm run dev</StartupCommand>
+    <JavaScriptTestRoot>src\</JavaScriptTestRoot>
+    <JavaScriptTestFramework>Vitest</JavaScriptTestFramework>
+    <!-- Keep the .NET build independent of npm: the dashboard builds through npm scripts, Docker and CI. -->
+    <ShouldRunBuildScript>false</ShouldRunBuildScript>
+    <ShouldRunNpmInstall>false</ShouldRunNpmInstall>
+  </PropertyGroup>
+</Project>

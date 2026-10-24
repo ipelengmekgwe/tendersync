@@ -90,7 +90,22 @@ public static class ApiServiceExtensions
             }
         }));
 
-        services.AddOpenApi("v1", options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
+        services.AddOpenApi("v1", options =>
+        {
+            options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+            // The JSON options accept numbers written as strings, which the generator describes as "integer | string" with a
+            // pattern. The generated TypeScript client (web/) is far more useful with plain integers.
+            options.AddSchemaTransformer((schema, _, _) =>
+            {
+                if (schema.Type is { } type && type.HasFlag(Microsoft.OpenApi.JsonSchemaType.String) && (type.HasFlag(Microsoft.OpenApi.JsonSchemaType.Integer) || type.HasFlag(Microsoft.OpenApi.JsonSchemaType.Number)))
+                {
+                    schema.Type = type & ~Microsoft.OpenApi.JsonSchemaType.String;
+                    schema.Pattern = null;
+                }
+
+                return Task.CompletedTask;
+            });
+        });
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
