@@ -40,10 +40,15 @@ public sealed class Notification : Entity
 
     public string? PayloadJson { get; private set; }
 
+    /// <summary>Earliest send time: set by quiet hours or by the retry backoff; null means send now.</summary>
+    public DateTimeOffset? NotBefore { get; private set; }
+
+    public bool IsDue(DateTimeOffset now) => Status == NotificationStatus.Pending && (NotBefore is null || NotBefore <= now);
+
     public static string BuildDedupeKey(NotificationType type, NotificationChannel channel, string recipient, Guid? tenderId, Guid? companyProfileId, string? bucket = null) =>
         string.Join(':', type.ToString().ToLowerInvariant(), channel.ToString().ToLowerInvariant(), recipient.Trim().ToLowerInvariant(), tenderId?.ToString("N") ?? "-", companyProfileId?.ToString("N") ?? "-", bucket ?? "-");
 
-    public static Notification Create(NotificationType type, NotificationChannel channel, string recipient, string subject, string body, Guid? tenderId, Guid? companyProfileId, string? bucket = null, string? payloadJson = null)
+    public static Notification Create(NotificationType type, NotificationChannel channel, string recipient, string subject, string body, Guid? tenderId, Guid? companyProfileId, string? bucket = null, string? payloadJson = null, DateTimeOffset? notBefore = null)
     {
         recipient = Guard.NotEmpty(recipient, nameof(recipient));
         return new Notification
@@ -58,8 +63,14 @@ public sealed class Notification : Entity
             CompanyProfileId = companyProfileId,
             Status = NotificationStatus.Pending,
             PayloadJson = payloadJson,
+            NotBefore = notBefore,
         };
     }
+
+    /// <summary>Retry delay after a failed attempt: 1, 2, 4, 8 minutes (PLAN.md §7.6: five attempts with backoff).</summary>
+    public static TimeSpan RetryDelay(int attempts) => TimeSpan.FromMinutes(Math.Pow(2, Math.Clamp(attempts - 1, 0, 6)));
+
+    public void Defer(DateTimeOffset until) => NotBefore = until;
 
     public void MarkSent(DateTimeOffset now)
     {
@@ -68,15 +79,17 @@ public sealed class Notification : Entity
         SentAt = now;
         Status = NotificationStatus.Sent;
         Error = null;
+        NotBefore = null;
     }
 
-    /// <summary>Records a failed attempt. Returns true when the notification should be retried.</summary>
+    /// <summary>Records a failed attempt and schedules the retry with backoff. Returns true when the notification will be retried.</summary>
     public bool MarkFailed(string error, DateTimeOffset now)
     {
         Attempts++;
         LastAttemptAt = now;
         Error = Guard.NotEmpty(error, nameof(error));
         Status = Attempts >= MaxAttempts ? NotificationStatus.Failed : NotificationStatus.Pending;
+        NotBefore = Status == NotificationStatus.Pending ? now + RetryDelay(Attempts) : null;
         return Status == NotificationStatus.Pending;
     }
 

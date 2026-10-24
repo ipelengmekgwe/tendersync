@@ -1,0 +1,3 @@
+Company document expiring in {{ DaysLeft }} days: {{ DocumentTitle }}
+📄 <b>Document expiring</b>
+<b>{{ DocumentTitle | html.escape }}</b> expires on {{ ExpiresOn }} ({{ DaysLeft }} days). Renew and upload the new copy.

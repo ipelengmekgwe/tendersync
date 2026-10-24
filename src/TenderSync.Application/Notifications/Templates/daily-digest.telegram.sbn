@@ -1,0 +1,12 @@
+TenderSync digest for {{ Date }}
+📬 <b>Digest · {{ Date }}</b>
+{{ if NewMatches.size > 0 }}<b>New matches (24 h)</b>
+{{ for item in NewMatches }}• <a href="{{ item.TenderUrl }}">{{ item.BidNumber | html.escape }}</a> {{ item.Title | html.escape }} — closing {{ item.Closing }}{{ if item.Relevance }}, {{ item.Relevance }}/100{{ end }}
+{{ end }}{{ end }}
+{{ if ClosingSoon.size > 0 }}<b>Closing soon</b>
+{{ for item in ClosingSoon }}• <a href="{{ item.TenderUrl }}">{{ item.BidNumber | html.escape }}</a> {{ item.Title | html.escape }} — closing {{ item.Closing }}{{ if item.Relevance }}, {{ item.Relevance }}/100{{ end }}
+{{ end }}{{ end }}
+{{ if Qualified.size > 0 }}<b>Qualification reports (24 h)</b>
+{{ for item in Qualified }}• <a href="{{ item.TenderUrl }}">{{ item.BidNumber | html.escape }}</a> {{ item.Title | html.escape }} — closing {{ item.Closing }}{{ if item.Relevance }}, {{ item.Relevance }}/100{{ end }}
+{{ end }}{{ end }}
+{{ if NewMatches.size == 0 && ClosingSoon.size == 0 && Qualified.size == 0 }}Nothing new since yesterday.{{ end }}

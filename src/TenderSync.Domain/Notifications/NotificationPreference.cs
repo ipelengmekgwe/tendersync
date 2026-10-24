@@ -36,8 +36,10 @@ public sealed class NotificationPreference : Entity
         Address = Guard.NotEmpty(address, nameof(address));
         Types = [.. types.Distinct()];
         Enabled = enabled;
-        QuietHoursJson = Guard.Trimmed(quietHoursJson);
+        QuietHoursJson = Notifications.QuietHours.Parse(quietHoursJson)?.ToJson();
     }
 
     public bool Wants(NotificationType type) => Enabled && Types.Contains(type);
+
+    public QuietHours? QuietHours => Notifications.QuietHours.Parse(QuietHoursJson);
 }

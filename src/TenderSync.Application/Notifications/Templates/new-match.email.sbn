@@ -1,0 +1,18 @@
+New match: {{ BidNumber }} — {{ Title }}
+<div style="font-family:Segoe UI,Arial,sans-serif;font-size:15px;color:#1f2933;max-width:640px">
+<p style="margin:0 0 4px;color:#52606d;font-size:13px">TenderSync · {{ Type }}</p>
+<p style="margin:0 0 12px">A tender that matches the company profile was published.</p>
+<h2 style="margin:0 0 8px;font-size:18px">{{ BidNumber | html.escape }}: {{ Title | html.escape }}</h2>
+<table style="border-collapse:collapse;font-size:14px">
+<tr><td style="padding:2px 12px 2px 0;color:#52606d">Buyer</td><td>{{ Buyer | html.escape }}{{ if Province != "" }} ({{ Province | html.escape }}){{ end }}</td></tr>
+<tr><td style="padding:2px 12px 2px 0;color:#52606d">Closing</td><td>{{ Closing }}{{ if ClosingIn != "" }} ({{ ClosingIn }}){{ end }}</td></tr>
+{{ if Briefing != "" }}<tr><td style="padding:2px 12px 2px 0;color:#52606d">Briefing</td><td>{{ Briefing | html.escape }}</td></tr>{{ end }}
+{{ if Relevance }}<tr><td style="padding:2px 12px 2px 0;color:#52606d">Relevance</td><td>{{ Relevance }}/100{{ if Categories != "" }} · {{ Categories | html.escape }}{{ end }}</td></tr>{{ end }}
+<tr><td style="padding:2px 12px 2px 0;color:#52606d">Can we bid?</td><td>{{ Verdict | html.escape }}{{ if Score }} (score {{ Score }}/100){{ end }}</td></tr>
+</table>
+{{ if Summary != "" }}<p style="margin:12px 0 0">{{ Summary | html.escape }}</p>{{ end }}
+{{ if MissingItems.size > 0 }}<p style="margin:12px 0 4px"><strong>Top missing items</strong></p><ul style="margin:0;padding-left:20px">{{ for item in MissingItems }}<li>{{ item | html.escape }}</li>{{ end }}</ul>{{ end }}
+<p style="margin:16px 0 0"><a href="{{ TenderUrl }}" style="background:#1d4ed8;color:#fff;padding:8px 14px;border-radius:4px;text-decoration:none">Open in TenderSync</a>
+&nbsp; <a href="{{ SourceUrl }}" style="color:#1d4ed8">Source on eTenders</a></p>
+<p style="margin:20px 0 0;color:#7b8794;font-size:12px">Generated automatically from the eTenders portal and your company profile. Verify against the source documents before acting.</p>
+</div>

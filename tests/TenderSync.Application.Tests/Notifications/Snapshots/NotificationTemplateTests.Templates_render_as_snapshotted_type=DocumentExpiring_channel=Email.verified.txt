@@ -1,0 +1,8 @@
+﻿Subject: Company document expiring in 30 days: Tax compliance PIN 2026
+
+<div style="font-family:Segoe UI,Arial,sans-serif;font-size:15px;color:#1f2933;max-width:640px">
+<p style="margin:0 0 4px;color:#52606d;font-size:13px">TenderSync · DocumentExpiring</p>
+<p style="margin:0 0 12px"><strong>Tax compliance PIN 2026</strong> expires on Mon 23 Nov 2026 (30 days). Renew it and upload the new copy so bids are not blocked.</p>
+<p style="margin:16px 0 0"><a href="http://localhost:3000" style="background:#1d4ed8;color:#fff;padding:8px 14px;border-radius:4px;text-decoration:none">Open TenderSync</a></p>
+<p style="margin:20px 0 0;color:#7b8794;font-size:12px">Generated automatically from the eTenders portal and your company profile. Verify against the source documents before acting.</p>
+</div>

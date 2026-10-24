@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using TenderSync.Application.Abstractions.Notifications;
 using TenderSync.Application.Features.Auth;
 using TenderSync.Application.Security;
 using TenderSync.Infrastructure.Identity;
@@ -56,6 +59,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["DocumentStore:Provider"] = "FileSystem",
             ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
         }));
+        builder.ConfigureTestServices(services => services.RemoveAll<INotificationChannel>());
     }
 
     public async Task InitializeAsync()

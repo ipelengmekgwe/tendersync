@@ -1,0 +1,10 @@
+Closing {{ ClosingIn }}: {{ BidNumber }} — {{ Title }}
+⏰ **Closing {{ ClosingIn }}**
+**{{ BidNumber }}** — {{ Title }}
+{{ Buyer }}{{ if Province != "" }} · {{ Province }}{{ end }}
+Closing: {{ Closing }}{{ if ClosingIn != "" }} ({{ ClosingIn }}){{ end }}
+{{ if Briefing != "" }}{{ Briefing }}
+{{ end }}{{ if Relevance }}Relevance: {{ Relevance }}/100
+{{ end }}Can we bid? {{ Verdict }}{{ if Score }} (score {{ Score }}/100){{ end }}
+{{ if MissingItems.size > 0 }}Missing: {{ for item in MissingItems }}{{ item }}{{ if !for.last }}; {{ end }}{{ end }}
+{{ end }}[Source on eTenders]({{ SourceUrl }})

@@ -20,4 +20,7 @@ public interface IPipelineScheduler
 
     /// <summary>Queues <c>QualifyTenderJob</c> (PLAN.md §7.5) for one profile, or every matched profile when null.</summary>
     void EnqueueQualification(Guid tenderId, Guid? companyProfileId);
+
+    /// <summary>Queues <c>SendNotificationJob</c> (PLAN.md §13, notify queue) for one notification row.</summary>
+    void EnqueueNotificationSend(Guid notificationId);
 }

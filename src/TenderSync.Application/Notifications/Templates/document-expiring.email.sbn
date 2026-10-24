@@ -1,0 +1,7 @@
+Company document expiring in {{ DaysLeft }} days: {{ DocumentTitle }}
+<div style="font-family:Segoe UI,Arial,sans-serif;font-size:15px;color:#1f2933;max-width:640px">
+<p style="margin:0 0 4px;color:#52606d;font-size:13px">TenderSync · {{ Type }}</p>
+<p style="margin:0 0 12px"><strong>{{ DocumentTitle | html.escape }}</strong> expires on {{ ExpiresOn }} ({{ DaysLeft }} days). Renew it and upload the new copy so bids are not blocked.</p>
+<p style="margin:16px 0 0"><a href="{{ DashboardUrl }}" style="background:#1d4ed8;color:#fff;padding:8px 14px;border-radius:4px;text-decoration:none">Open TenderSync</a></p>
+<p style="margin:20px 0 0;color:#7b8794;font-size:12px">Generated automatically from the eTenders portal and your company profile. Verify against the source documents before acting.</p>
+</div>

@@ -19,6 +19,7 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.Property(n => n.PayloadJson).IsJsonb();
         builder.HasIndex(n => n.DedupeKey).IsUnique();
         builder.HasIndex(n => new { n.Status, n.CreatedAt });
+        builder.HasIndex(n => new { n.Status, n.NotBefore });
         builder.HasIndex(n => n.TenderId);
     }
 }
@@ -31,6 +32,7 @@ internal sealed class NotificationPreferenceConfiguration : IEntityTypeConfigura
         builder.Property(p => p.Address).HasMaxLength(1024).IsRequired();
         builder.Property(p => p.Types).HasEnumArrayConversion();
         builder.Property(p => p.QuietHoursJson).IsJsonb();
+        builder.Ignore(p => p.QuietHours);
         builder.HasIndex(p => new { p.UserId, p.Channel }).IsUnique();
     }
 }

@@ -10,6 +10,7 @@ using TenderSync.Infrastructure.Documents;
 using TenderSync.Infrastructure.ETenders;
 using TenderSync.Infrastructure.Identity;
 using TenderSync.Infrastructure.Llm;
+using TenderSync.Infrastructure.Notifications;
 using TenderSync.Infrastructure.Persistence;
 using TenderSync.Infrastructure.Persistence.Interceptors;
 using TenderSync.Infrastructure.Persistence.Seed;
@@ -60,6 +61,7 @@ public static class DependencyInjection
         services.AddDocumentProcessing(configuration);
         services.AddLlm(configuration);
         services.AddEncryption(configuration);
+        services.AddNotificationChannels(configuration);
 
         if (configuration is not null)
         {
