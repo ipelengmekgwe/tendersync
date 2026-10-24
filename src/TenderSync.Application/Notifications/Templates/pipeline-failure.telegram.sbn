@@ -1,0 +1,4 @@
+TenderSync pipeline failure: {{ Source }}
+🚨 <b>Pipeline failure</b> · {{ Source | html.escape }}
+{{ Message | html.escape }}
+{{ Date }}

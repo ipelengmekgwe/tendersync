@@ -45,6 +45,12 @@ public static class DependencyInjection
         services.AddOptions<Features.Qualification.QualificationOptions>(); // bound and validated by Infrastructure.AddLlm
         services.AddScoped<Features.Qualification.TenderQualifier>();
         services.AddOptions<Features.Companies.CompanyDocumentOptions>(); // bound and validated by Infrastructure.AddEncryption
+        services.AddOptions<Features.Notifications.NotificationOptions>(); // bound and validated by Infrastructure.AddNotificationChannels
+        services.AddSingleton<Features.Notifications.NotificationTemplates>();
+        services.AddScoped<Features.Notifications.NotificationModelBuilder>();
+        services.AddScoped<Features.Notifications.NotificationDispatcher>();
+        services.AddScoped<Features.Notifications.NotificationSender>();
+        services.AddScoped<Features.Notifications.DailyDigestBuilder>();
         return services;
     }
 }

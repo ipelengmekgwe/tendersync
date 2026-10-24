@@ -1,0 +1,5 @@
+﻿Subject: TenderSync pipeline failure: etenders
+
+🚨 **Pipeline failure** · etenders
+3 consecutive failures. Last error: HTTP 500 from /api/OCDSReleases
+Saturday 24 October 2026

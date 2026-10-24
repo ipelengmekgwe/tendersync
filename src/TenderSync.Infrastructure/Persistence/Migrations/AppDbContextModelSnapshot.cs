@@ -621,6 +621,10 @@ namespace TenderSync.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_attempt_at");
 
+                    b.Property<DateTimeOffset?>("NotBefore")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("not_before");
+
                     b.Property<string>("PayloadJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("payload_json");
@@ -669,6 +673,9 @@ namespace TenderSync.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_notifications_status_created_at");
+
+                    b.HasIndex("Status", "NotBefore")
+                        .HasDatabaseName("ix_notifications_status_not_before");
 
                     b.ToTable("notifications", "tendersync");
                 });

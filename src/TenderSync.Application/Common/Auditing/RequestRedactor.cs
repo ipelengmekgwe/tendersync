@@ -7,8 +7,8 @@ namespace TenderSync.Application.Common.Auditing;
 
 /// <summary>
 /// Serialises a request for logs and audit rows with [Sensitive] properties replaced by a placeholder. Nested input objects
-/// (a command wrapping a body record) are walked the same way, so a sensitive field two levels down is still redacted;
-/// streams are never serialised.
+/// (a command wrapping a body record, or a list of them) are walked the same way, so a sensitive field two levels down is
+/// still redacted; streams are never serialised.
 /// </summary>
 public static class RequestRedactor
 {
@@ -36,9 +36,26 @@ public static class RequestRedactor
             return Redacted;
         }
 
-        if (type.IsPrimitive || type.IsEnum || value is string || value is decimal || value is DateTimeOffset || value is DateTime || value is Guid || value is TimeSpan || value is System.Collections.IEnumerable)
+        if (type.IsPrimitive || type.IsEnum || value is string || value is decimal || value is DateTimeOffset || value is DateTime || value is Guid || value is TimeSpan || value is System.Collections.IDictionary)
         {
             return value;
+        }
+
+        if (value is System.Collections.IEnumerable items)
+        {
+            // Arrays of primitives (byte[], int[]) stay as they are; lists of inputs are walked item by item.
+            if (type.IsArray && (type.GetElementType()?.IsPrimitive ?? false))
+            {
+                return value;
+            }
+
+            var list = new List<object?>();
+            foreach (var item in items)
+            {
+                list.Add(Redact(item, depth + 1));
+            }
+
+            return list;
         }
 
         var properties = Cache.GetOrAdd(type, t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead && p.GetIndexParameters().Length == 0).ToArray());

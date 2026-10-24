@@ -10,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 using TenderSync.Infrastructure;
 using TenderSync.Application.Abstractions.Identity;
+using TenderSync.Application.Abstractions.Notifications;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using TenderSync.Application.Common.Events;
 using TenderSync.Application.Security;
 using TenderSync.Domain.Events;
@@ -42,6 +44,10 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
 
     public FakeFileServer Downloads { get; } = new();
 
+    /// <summary>One fake per channel, replacing the real email/Telegram/Teams/SMS/WhatsApp channels.</summary>
+    public IReadOnlyDictionary<Domain.Enums.NotificationChannel, FakeNotificationChannel> Channels { get; } =
+        Enum.GetValues<Domain.Enums.NotificationChannel>().ToDictionary(c => c, c => new FakeNotificationChannel(c));
+
     public string DocumentRoot { get; } = Path.Combine(Path.GetTempPath(), "tendersync-worker-tests", Guid.NewGuid().ToString("N"));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -62,6 +68,8 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
             ["Llm:Routing:fuzzy-match-certification"] = "fake",
             ["Encryption:Keys:test"] = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)),
             ["Encryption:ActiveKeyId"] = "test",
+            ["Notifications:DashboardBaseUrl"] = "http://localhost:3000",
+            ["Notifications:SweepOlderThanSeconds"] = "30",
             ["DocumentStore:Provider"] = "FileSystem",
             ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
             ["Documents:DownloadSpacingMs"] = "0",
@@ -69,6 +77,11 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton(Recorded);
+            services.RemoveAll<INotificationChannel>();
+            foreach (var channel in Channels.Values)
+            {
+                services.AddSingleton<INotificationChannel>(channel);
+            }
             // Bid-pack downloads go to the fake eTenders file server instead of the internet.
             services.AddHttpClient(HttpDocumentDownloader.ClientName).ConfigurePrimaryHttpMessageHandler(() => Downloads);
             services.AddTransient<INotificationHandler<DomainEventNotification<TenderFirstSeen>>>(sp => sp.GetRequiredService<RecordingHandler>());

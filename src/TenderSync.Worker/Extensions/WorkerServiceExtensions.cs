@@ -95,6 +95,9 @@ public static class WorkerServiceExtensions
         services.AddScoped<ClassifyTenderJob>();
         services.AddScoped<ExtractRequirementsJob>();
         services.AddScoped<QualifyTenderJob>();
+        services.AddScoped<SendNotificationJob>();
+        services.AddScoped<SweepNotificationsJob>();
+        services.AddScoped<DailyDigestJob>();
         services.AddScoped<IPipelineScheduler, HangfirePipelineScheduler>();
 
         return services;

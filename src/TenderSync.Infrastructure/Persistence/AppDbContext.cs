@@ -33,7 +33,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     private EfRepository<TenderRequirement>? _tenderRequirements;
     private QualificationReportRepository? _qualificationReports;
     private NotificationRepository? _notifications;
-    private EfRepository<NotificationPreference>? _notificationPreferences;
+    private NotificationPreferenceRepository? _notificationPreferences;
     private OutboxRepository? _outbox;
     private EfRepository<BidApplication>? _applications;
     private EfRepository<ApplicationDocument>? _applicationDocuments;
@@ -109,7 +109,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public INotificationRepository Notifications => _notifications ??= new NotificationRepository(this);
 
-    public IRepository<NotificationPreference> NotificationPreferences => _notificationPreferences ??= new EfRepository<NotificationPreference>(this);
+    public INotificationPreferenceRepository NotificationPreferences => _notificationPreferences ??= new NotificationPreferenceRepository(this);
 
     public IOutboxRepository Outbox => _outbox ??= new OutboxRepository(this);
 

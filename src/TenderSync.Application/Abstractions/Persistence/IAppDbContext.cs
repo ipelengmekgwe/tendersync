@@ -31,7 +31,7 @@ public interface IAppDbContext
 
     INotificationRepository Notifications { get; }
 
-    IRepository<NotificationPreference> NotificationPreferences { get; }
+    INotificationPreferenceRepository NotificationPreferences { get; }
 
     IOutboxRepository Outbox { get; }
 

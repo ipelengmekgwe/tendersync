@@ -1,0 +1,3 @@
+Company document expiring in {{ DaysLeft }} days: {{ DocumentTitle }}
+📄 **Document expiring**
+**{{ DocumentTitle }}** expires on {{ ExpiresOn }} ({{ DaysLeft }} days). Renew and upload the new copy.

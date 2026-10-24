@@ -1,0 +1,11 @@
+Award published: {{ BidNumber }} — {{ Title }}
+🏁 <b>Award published</b>
+{{ Change | html.escape }}
+<b>{{ BidNumber | html.escape }}</b> — {{ Title | html.escape }}
+{{ Buyer | html.escape }}{{ if Province != "" }} · {{ Province | html.escape }}{{ end }}
+Closing: {{ Closing }}{{ if ClosingIn != "" }} ({{ ClosingIn }}){{ end }}
+{{ if Briefing != "" }}{{ Briefing | html.escape }}
+{{ end }}{{ if Relevance }}Relevance: {{ Relevance }}/100
+{{ end }}Can we bid? {{ Verdict | html.escape }}{{ if Score }} (score {{ Score }}/100){{ end }}
+{{ if MissingItems.size > 0 }}Missing: {{ for item in MissingItems }}{{ item | html.escape }}{{ if !for.last }}; {{ end }}{{ end }}
+{{ end }}<a href="{{ SourceUrl }}">Source on eTenders</a>

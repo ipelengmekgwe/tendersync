@@ -103,6 +103,21 @@ internal sealed class NotificationRepository(AppDbContext context) : EfRepositor
             .OrderBy(n => n.CreatedAt)
             .Take(batchSize)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Notification>> GetDueAsync(DateTimeOffset now, DateTimeOffset createdBefore, int batchSize, CancellationToken cancellationToken = default) =>
+        await Set.Where(n => n.Status == Domain.Enums.NotificationStatus.Pending && (n.NotBefore == null || n.NotBefore <= now) && n.CreatedAt <= createdBefore)
+            .OrderBy(n => n.CreatedAt)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
+}
+
+internal sealed class NotificationPreferenceRepository(AppDbContext context) : EfRepository<NotificationPreference>(context), INotificationPreferenceRepository
+{
+    public async Task<IReadOnlyList<NotificationPreference>> ListByUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await Set.Where(p => p.UserId == userId).OrderBy(p => p.Channel).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<NotificationPreference>> ListEnabledAsync(CancellationToken cancellationToken = default) =>
+        await Set.Where(p => p.Enabled).OrderBy(p => p.UserId).ThenBy(p => p.Channel).ToListAsync(cancellationToken);
 }
 
 internal sealed class OutboxRepository(AppDbContext context) : EfRepository<OutboxMessage>(context), IOutboxRepository

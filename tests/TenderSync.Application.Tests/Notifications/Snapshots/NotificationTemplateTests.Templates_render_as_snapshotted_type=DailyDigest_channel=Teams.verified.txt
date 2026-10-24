@@ -1,0 +1,8 @@
+﻿Subject: TenderSync digest for Saturday 24 October 2026
+
+📬 **Digest · Saturday 24 October 2026**
+**New matches (24 h)**
+- [WCGHCC0038/1/2025](http://localhost:3000/tenders/1) Patient record system — closing Fri 20 Nov 2026 11:00 SAST, 82/100
+
+**Closing soon**
+- [E175322](http://localhost:3000/tenders/2) SAP support services — closing Mon 26 Oct 2026 11:00 SAST, 70/100

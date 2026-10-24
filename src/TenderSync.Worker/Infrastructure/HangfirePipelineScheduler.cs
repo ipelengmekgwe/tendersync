@@ -21,4 +21,7 @@ internal sealed class HangfirePipelineScheduler(IBackgroundJobClient jobs) : IPi
 
     public void EnqueueQualification(Guid tenderId, Guid? companyProfileId) =>
         jobs.Enqueue<QualifyTenderJob>(job => job.ExecuteAsync(tenderId, companyProfileId, CancellationToken.None));
+
+    public void EnqueueNotificationSend(Guid notificationId) =>
+        jobs.Enqueue<SendNotificationJob>(job => job.ExecuteAsync(notificationId, CancellationToken.None));
 }

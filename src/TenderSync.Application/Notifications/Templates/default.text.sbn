@@ -1,0 +1,2 @@
+TenderSync {{ Type }}{{ if BidNumber != "" }}: {{ BidNumber }}{{ end }}
+{{ if BidNumber != "" }}{{ Title }} — {{ Buyer }}. Closing {{ Closing }}. Can we bid? {{ Verdict }}. {{ TenderUrl }}{{ else if Message != "" }}{{ Message }}{{ else }}{{ Change }}{{ end }}

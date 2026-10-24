@@ -1,0 +1,9 @@
+﻿Subject: TenderSync pipeline failure: etenders
+
+<div style="font-family:Segoe UI,Arial,sans-serif;font-size:15px;color:#1f2933;max-width:640px">
+<p style="margin:0 0 4px;color:#52606d;font-size:13px">TenderSync · PipelineFailure</p>
+<p style="margin:0 0 12px"><strong>etenders</strong> needs attention since Saturday 24 October 2026.</p>
+<pre style="background:#f5f7fa;padding:10px;border-radius:4px;white-space:pre-wrap">3 consecutive failures. Last error: HTTP 500 from /api/OCDSReleases</pre>
+<p style="margin:16px 0 0"><a href="http://localhost:3000/admin" style="color:#1d4ed8">Pipeline health</a></p>
+<p style="margin:20px 0 0;color:#7b8794;font-size:12px">Generated automatically from the eTenders portal and your company profile. Verify against the source documents before acting.</p>
+</div>

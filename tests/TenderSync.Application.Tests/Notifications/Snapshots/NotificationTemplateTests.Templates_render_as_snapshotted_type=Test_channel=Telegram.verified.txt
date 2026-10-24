@@ -1,0 +1,5 @@
+﻿Subject: TenderSync test message
+
+✅ <b>TenderSync test</b>
+3 consecutive failures. Last error: HTTP 500 from /api/OCDSReleases
+If you can read this, the channel works.
