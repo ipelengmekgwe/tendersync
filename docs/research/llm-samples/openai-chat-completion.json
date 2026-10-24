@@ -1,0 +1,23 @@
+{
+  "id": "chatcmpl-9x1",
+  "object": "chat.completion",
+  "created": 1792403000,
+  "model": "gpt-4.1-mini-2025-04-14",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"summary\":\"Supply of network switches for a TVET college.\",\"bidNumber\":\"ETVET 04/2026\",\"closingDate\":\"14 November 2026 at 10:00\",\"closingDatePage\":1}",
+        "refusal": null
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1800,
+    "completion_tokens": 60,
+    "total_tokens": 1860,
+    "prompt_tokens_details": { "cached_tokens": 1024 }
+  }
+}

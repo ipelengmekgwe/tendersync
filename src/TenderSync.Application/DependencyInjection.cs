@@ -30,6 +30,12 @@ public static class DependencyInjection
         services.AddScoped<Features.Documents.TenderDocumentDownloader>();
         services.AddScoped<Features.Documents.DocumentTextExtraction>();
         services.AddOptions<Features.Documents.DocumentOptions>(); // bound and validated by Infrastructure.AddDocumentProcessing
+        services.AddOptions<Features.Llm.LlmOptions>(); // bound and validated by Infrastructure.AddLlm
+        services.AddSingleton<Abstractions.Llm.IPromptRegistry, Features.Llm.PromptRegistry>();
+        services.AddSingleton<Features.Llm.LlmPricing>();
+        services.AddScoped<Abstractions.Llm.ILlmCostRecorder, Features.Llm.LlmCostRecorder>();
+        services.AddScoped<Features.Llm.LlmCostCap>();
+        services.AddScoped<Abstractions.Llm.ILlmClient, Features.Llm.GuardedLlmClient>();
         return services;
     }
 }
