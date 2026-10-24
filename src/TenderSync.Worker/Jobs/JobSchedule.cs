@@ -18,6 +18,7 @@ public static class JobSchedule
         manager.AddOrUpdate<IngestRecentReleasesJob>(IngestRecentReleasesJob.RecurringId, job => job.ExecuteAsync(CancellationToken.None), "*/30 * * * *", options);
         manager.AddOrUpdate<BackfillReleasesJob>(BackfillReleasesJob.RecurringId, job => job.ExecuteAsync(CancellationToken.None), Cron.Weekly(DayOfWeek.Sunday, 2), options);
         manager.AddOrUpdate<SourceHealthCheckJob>(SourceHealthCheckJob.RecurringId, job => job.ExecuteAsync(CancellationToken.None), "*/15 * * * *", options);
+        manager.AddOrUpdate<LlmCostRollupJob>(LlmCostRollupJob.RecurringId, job => job.ExecuteAsync(CancellationToken.None), "55 23 * * *", options);
     }
 
     /// <summary>Recurring job ids that must exist after <see cref="Register"/>; checked by tests and the readiness view.</summary>
@@ -27,5 +28,6 @@ public static class JobSchedule
         IngestRecentReleasesJob.RecurringId,
         BackfillReleasesJob.RecurringId,
         SourceHealthCheckJob.RecurringId,
+        LlmCostRollupJob.RecurringId,
     ];
 }

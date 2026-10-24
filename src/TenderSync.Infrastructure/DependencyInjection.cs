@@ -9,6 +9,7 @@ using TenderSync.Application.Abstractions.Persistence;
 using TenderSync.Infrastructure.Documents;
 using TenderSync.Infrastructure.ETenders;
 using TenderSync.Infrastructure.Identity;
+using TenderSync.Infrastructure.Llm;
 using TenderSync.Infrastructure.Persistence;
 using TenderSync.Infrastructure.Persistence.Interceptors;
 using TenderSync.Infrastructure.Persistence.Seed;
@@ -56,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddETenders(configuration);
         services.AddDocumentProcessing(configuration);
+        services.AddLlm(configuration);
 
         if (configuration is not null)
         {

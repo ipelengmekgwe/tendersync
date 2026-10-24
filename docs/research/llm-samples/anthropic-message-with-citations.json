@@ -1,0 +1,30 @@
+{
+  "id": "msg_01XFDUDYJgAACzvnptvVoYEL",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"summary\":\"Supplementary bid for the supply and delivery of comfort packs to Western Cape health offices.\",\"bidNumber\":\"WCGHCC0038/1/2025\",\"closingDate\":\"20 November 2026 at 11:00\",\"closingDatePage\":2}",
+      "citations": [
+        {
+          "type": "page_location",
+          "cited_text": "Closing date: 20 November 2026 at 11:00",
+          "document_index": 0,
+          "document_title": "Bid Document",
+          "start_page_number": 2,
+          "end_page_number": 3
+        }
+      ]
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 2345,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 1200,
+    "output_tokens": 87
+  }
+}

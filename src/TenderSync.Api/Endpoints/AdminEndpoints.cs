@@ -1,6 +1,7 @@
 using MediatR;
 using TenderSync.Api.Security;
 using TenderSync.Application.Common.Models;
+using TenderSync.Application.Features.Admin.Queries.GetLlmCallsSummary;
 using TenderSync.Application.Features.Admin.Queries.ListAuditLogs;
 using TenderSync.Application.Features.Admin.Queries.ListJobRuns;
 using TenderSync.Application.Features.Admin.Queries.ListSourceHealth;
@@ -29,6 +30,12 @@ public static class AdminEndpoints
                 TypedResults.Ok(await sender.Send(new ListJobRunsQuery(jobName, page ?? 1, pageSize ?? Paging.DefaultPageSize), ct)))
             .WithSummary("Background job runs, newest first, with per-run details such as ingest summaries.")
             .Produces<PagedResult<JobRunDto>>();
+
+        group.MapGet("/llm-calls", async (DateTimeOffset? from, DateTimeOffset? to, string? purpose, int? recent, ISender sender, CancellationToken ct) =>
+                TypedResults.Ok(await sender.Send(new GetLlmCallsSummaryQuery(from, to, purpose, recent ?? 50), ct)))
+            .WithSummary("Model spend: totals by day, purpose and model for a window (default 30 days), today's spend against the cap, and the latest calls.")
+            .Produces<LlmCallsSummaryDto>()
+            .ProducesValidationProblem();
 
         return app;
     }
