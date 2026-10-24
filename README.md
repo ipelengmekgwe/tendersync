@@ -12,6 +12,22 @@ WP02 adds the API host: JWT login with rotating refresh tokens, role policies (A
 
 WP05 adds the Worker host: Hangfire on PostgreSQL (schema `hangfire`) with the `notify`, `ingest` and `pipeline` queues, the recurring-job schedule in `JobSchedule`, job-run recording, and the outbox dispatcher that turns persisted domain events into MediatR notifications every minute. The Hangfire dashboard at `http://localhost:5001/hangfire` needs an Admin JWT: open it as `/hangfire?access_token=<token>` once and the token moves into a cookie.
 
+WP03 adds ingestion from the eTenders OCDS API: a resilient client (timeouts, retries, circuit breaker), the OCDS-to-tender mapper, JSON-schema drift detection, and the `IngestRecentReleases` (every 30 minutes), `BackfillReleases` (weekly) and `SourceHealthCheck` (every 15 minutes) jobs. Admins can read `/api/v1/admin/source-health` and `/api/v1/admin/jobs/runs`.
+
+One-shot operator modes on the Worker (no Hangfire server is started):
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --ingest-days 7
+```
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --backfill-days 90
+```
+
+```bash
+dotnet run --project src/TenderSync.Worker -- --probe
+```
+
 Integration tests start a PostgreSQL 17 container through Testcontainers, so Docker must be running for `dotnet test`.
 
 ### First run

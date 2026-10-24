@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(AssemblyMarker).Assembly, includeInternalTypes: true);
         services.AddScoped<Jobs.JobRunner>();
         services.AddScoped<Jobs.OutboxProcessor>();
+        services.AddScoped<Features.Ingest.TenderIngestor>();
         return services;
     }
 }

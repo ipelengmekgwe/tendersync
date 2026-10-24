@@ -16,6 +16,7 @@
     <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="JsonSchema.Net" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <PackageReference Include="Anthropic" />
@@ -29,5 +30,6 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Persistence/Seed/za-municipalities.csv" LogicalName="TenderSync.Infrastructure.Persistence.Seed.za-municipalities.csv" />
+    <EmbeddedResource Include="ETenders/ocds-release-package.schema.json" LogicalName="TenderSync.Infrastructure.ETenders.ocds-release-package.schema.json" />
   </ItemGroup>
 </Project>

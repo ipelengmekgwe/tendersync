@@ -19,6 +19,21 @@ public class AdminAndAuditTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task Admin_can_read_source_health_and_job_runs()
+    {
+        using var admin = await factory.CreateAdminClientAsync();
+
+        var health = await admin.GetAsync("/api/v1/admin/source-health?take=10");
+        health.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var runs = await admin.GetAsync("/api/v1/admin/jobs/runs?pageSize=10");
+        runs.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var viewer = await factory.CreateViewerClientAsync();
+        (await viewer.GetAsync("/api/v1/admin/source-health")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task Successful_commands_write_audit_rows_with_sensitive_fields_redacted()
     {
         await factory.LoginAsync(ApiFactory.ViewerEmail, ApiFactory.ViewerPassword);
