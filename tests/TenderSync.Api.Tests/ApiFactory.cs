@@ -47,6 +47,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["RateLimiting:Auth:PermitLimit"] = "1000",
             ["Serilog:WriteTo:1:Name"] = "Console",
             ["Serilog:MinimumLevel:Default"] = "Warning",
+            ["Llm:Routing:classify"] = "fake",
             ["DocumentStore:Provider"] = "FileSystem",
             ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
         }));

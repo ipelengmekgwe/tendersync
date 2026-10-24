@@ -44,6 +44,20 @@ public sealed class TenderClassification
         };
     }
 
+    /// <summary>Re-runs of the keyword stage (tender text changed, categories edited) reset the LLM fields.</summary>
+    public void ApplyKeywordResult(IEnumerable<string> categoryCodes, int relevance, string? rationale, DateTimeOffset now)
+    {
+        Stage = ClassificationStage.Keyword;
+        CategoryCodes = [.. categoryCodes.Distinct(StringComparer.OrdinalIgnoreCase)];
+        Relevance = Guard.InRange(relevance, 0, 100, nameof(relevance));
+        Rationale = rationale;
+        Model = null;
+        PromptVersion = null;
+        TokensIn = 0;
+        TokensOut = 0;
+        ClassifiedAt = now;
+    }
+
     public void ApplyLlmResult(IEnumerable<string> categoryCodes, int relevance, string? rationale, string model, string promptVersion, int tokensIn, int tokensOut, DateTimeOffset now)
     {
         Stage = ClassificationStage.Llm;

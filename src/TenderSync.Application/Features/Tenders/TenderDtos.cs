@@ -16,6 +16,7 @@ public sealed record TenderListItemDto(
     DateTimeOffset? ClosingAt,
     TenderStatus Status,
     int? Relevance,
+    IReadOnlyList<string> CategoryCodes,
     MatchStatus? MatchStatus,
     int DocumentCount);
 

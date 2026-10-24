@@ -34,16 +34,37 @@ public sealed class DatabaseSeeder(
 
     private async Task SeedInterestCategoriesAsync(CancellationToken cancellationToken)
     {
-        var existing = await context.InterestCategorySet.Select(c => c.Code).ToListAsync(cancellationToken);
-        var missing = InterestCategorySeed.All.Where(c => !existing.Contains(c.Code, StringComparer.OrdinalIgnoreCase)).ToList();
-        if (missing.Count == 0)
+        var existing = await context.InterestCategorySet.ToDictionaryAsync(c => c.Code, StringComparer.OrdinalIgnoreCase, cancellationToken);
+        var added = 0;
+        var refreshed = 0;
+        foreach (var seed in InterestCategorySeed.All)
+        {
+            if (!existing.TryGetValue(seed.Code, out var category))
+            {
+                context.InterestCategorySet.Add(InterestCategory.Create(seed.Code, seed.Name, seed.Description, seed.Keywords, seed.NegativeKeywords));
+                added++;
+                continue;
+            }
+
+            // Keyword lists grow with each work package. A category nobody has customised (every stored keyword is still
+            // a seed keyword) takes the new seed list; one with custom keywords is left alone.
+            var untouched = category.Keywords.All(k => seed.Keywords.Contains(k, StringComparer.OrdinalIgnoreCase))
+                && category.NegativeKeywords.All(k => seed.NegativeKeywords.Contains(k, StringComparer.OrdinalIgnoreCase));
+            var differs = category.Keywords.Length != seed.Keywords.Length || category.NegativeKeywords.Length != seed.NegativeKeywords.Length;
+            if (untouched && differs)
+            {
+                category.Update(category.Name, category.Description, seed.Keywords, seed.NegativeKeywords, category.Weight, category.Enabled);
+                refreshed++;
+            }
+        }
+
+        if (added == 0 && refreshed == 0)
         {
             return;
         }
 
-        context.InterestCategorySet.AddRange(missing.Select(c => InterestCategory.Create(c.Code, c.Name, c.Description, c.Keywords, c.NegativeKeywords)));
         await context.SaveChangesAsync(cancellationToken);
-        logger.LogInformation("Seeded {Count} interest categories", missing.Count);
+        logger.LogInformation("Seeded {Added} interest categories, refreshed keywords of {Refreshed}", added, refreshed);
     }
 
     private async Task SeedMunicipalitiesAsync(CancellationToken cancellationToken)

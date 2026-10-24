@@ -11,4 +11,7 @@ public interface IPipelineScheduler
 
     /// <summary>Queues <c>ExtractDocumentTextJob</c> for one downloaded document.</summary>
     void EnqueueTextExtraction(Guid documentId);
+
+    /// <summary>Queues <c>ClassifyTenderJob</c> (PLAN.md §7.2) for a new or changed tender.</summary>
+    void EnqueueClassification(Guid tenderId);
 }

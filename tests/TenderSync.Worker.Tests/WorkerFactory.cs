@@ -56,6 +56,7 @@ public sealed class WorkerFactory : WebApplicationFactory<Program>, IAsyncLifeti
             ["Seed:AdminPassword"] = AdminPassword,
             ["Serilog:WriteTo:1:Name"] = "Console",
             ["Serilog:MinimumLevel:Default"] = "Warning",
+            ["Llm:Routing:classify"] = "fake",
             ["DocumentStore:Provider"] = "FileSystem",
             ["DocumentStore:FileSystem:RootPath"] = DocumentRoot,
             ["Documents:DownloadSpacingMs"] = "0",

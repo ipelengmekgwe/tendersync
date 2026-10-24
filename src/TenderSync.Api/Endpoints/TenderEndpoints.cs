@@ -1,6 +1,8 @@
 using MediatR;
 using TenderSync.Api.Security;
 using TenderSync.Application.Common.Models;
+using TenderSync.Application.Features.Classification;
+using TenderSync.Application.Features.Classification.Commands.ReclassifyTender;
 using TenderSync.Application.Features.Tenders;
 using TenderSync.Application.Features.Tenders.Queries.GetTender;
 using TenderSync.Application.Features.Tenders.Queries.ListTenders;
@@ -29,6 +31,11 @@ public static class TenderEndpoints
         /// <summary>Optional value types must be nullable here: minimal-API binding treats non-nullable ones as required.</summary>
         public bool? MatchedOnly { get; init; }
 
+        /// <summary>Classified between the near-miss and match thresholds, without a match.</summary>
+        public bool? NearMisses { get; init; }
+
+        public int? MinRelevance { get; init; }
+
         public TenderSort? Sort { get; init; }
 
         public int? Page { get; init; }
@@ -37,7 +44,7 @@ public static class TenderEndpoints
 
         public ListTendersQuery ToQuery() => new(
             Q, Status, Province, BuyerId, ClosingFrom, ClosingTo,
-            MatchedOnly ?? false, Sort ?? TenderSort.ClosingSoonest, Page ?? 1, PageSize ?? Paging.DefaultPageSize);
+            MatchedOnly ?? false, NearMisses ?? false, MinRelevance, Sort ?? TenderSort.ClosingSoonest, Page ?? 1, PageSize ?? Paging.DefaultPageSize);
     }
 
     public static IEndpointRouteBuilder MapTenderEndpoints(this IEndpointRouteBuilder app)
@@ -56,6 +63,13 @@ public static class TenderEndpoints
                 TypedResults.Ok(await sender.Send(new GetTenderQuery(id), ct)))
             .WithSummary("Tender detail with buyer, documents, classification and status history.")
             .Produces<TenderDetailDto>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{id:guid}/reclassify", async (Guid id, bool? prefilterOnly, ISender sender, CancellationToken ct) =>
+                TypedResults.Ok(await sender.Send(new ReclassifyTenderCommand(id, prefilterOnly ?? false), ct)))
+            .RequireAuthorization(Policies.Reviewer)
+            .WithSummary("Runs the keyword prefilter and the model classification again and returns the outcome. Reviewer or Admin.")
+            .Produces<ClassificationOutcome>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return app;
