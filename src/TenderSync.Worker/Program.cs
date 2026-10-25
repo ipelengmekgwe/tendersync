@@ -23,12 +23,15 @@ try
         builder.Configuration["Hangfire:ServerEnabled"] = "false";
     }
 
-    builder.Host.UseSerilog((context, services, configuration) => configuration
-        .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .Enrich.WithMachineName()
-        .Enrich.WithProperty("Application", "TenderSync.Worker"));
+    var applicationInsights = builder.AddAzureMonitorWhenConfigured("tendersync-worker");
+    builder.Host.UseSerilog(
+        (context, services, configuration) => configuration
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .Enrich.WithMachineName()
+            .Enrich.WithProperty("Application", "TenderSync.Worker"),
+        writeToProviders: applicationInsights);
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);

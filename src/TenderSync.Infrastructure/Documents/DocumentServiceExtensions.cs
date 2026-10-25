@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,11 +39,7 @@ public static class DocumentServiceExtensions
             var options = provider.GetRequiredService<IOptions<DocumentStoreOptions>>().Value;
             return options.Provider switch
             {
-                DocumentStoreOptions.AzureBlobProvider => new AzureBlobDocumentStore(new BlobContainerClient(
-                    string.IsNullOrWhiteSpace(options.AzureBlob.ConnectionString)
-                        ? throw new InvalidOperationException("DocumentStore:AzureBlob:ConnectionString is required when Provider is AzureBlob.")
-                        : options.AzureBlob.ConnectionString,
-                    options.AzureBlob.ContainerName)),
+                DocumentStoreOptions.AzureBlobProvider => new AzureBlobDocumentStore(BlobContainer(options.AzureBlob)),
                 _ => new FileSystemDocumentStore(options.FileSystem.ResolveRoot(), provider.GetRequiredService<ILogger<FileSystemDocumentStore>>()),
             };
         });
@@ -75,5 +72,20 @@ public static class DocumentServiceExtensions
         services.AddSingleton<IDocumentTextExtractor, CompositeTextExtractor>();
 
         return services;
+    }
+
+    private static BlobContainerClient BlobContainer(DocumentStoreOptions.AzureBlobOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.ConnectionString))
+        {
+            return new BlobContainerClient(options.ConnectionString, options.ContainerName);
+        }
+
+        if (!Uri.TryCreate(options.ServiceUri, UriKind.Absolute, out var serviceUri))
+        {
+            throw new InvalidOperationException("DocumentStore:AzureBlob:ConnectionString or DocumentStore:AzureBlob:ServiceUri is required when Provider is AzureBlob.");
+        }
+
+        return new BlobServiceClient(serviceUri, new DefaultAzureCredential()).GetBlobContainerClient(options.ContainerName);
     }
 }

@@ -76,6 +76,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  bicep:
+    name: Lint Bicep
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build and lint deploy/azure
+        # Warnings fail too (deploy/azure/bicepconfig.json adds use-recent-api-versions).
+        run: |
+          az bicep install --only-show-errors
+          az bicep lint --file deploy/azure/main.bicep --diagnostics-format sarif > bicep-lint.sarif
+          jq -e '[.runs[].results[]] | length == 0' bicep-lint.sarif > /dev/null || {
+            jq -r '.runs[].results[] | "\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine) \(.ruleId) \(.message.text)"' bicep-lint.sarif
+            exit 1
+          }
+          az bicep build --file deploy/azure/main.bicep --stdout > /dev/null
+
   web:
     name: Build and test (web)
     runs-on: ubuntu-latest
