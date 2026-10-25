@@ -57,7 +57,7 @@ services:
       retries: 10
 
   seq:
-    image: datalust/seq:2025.2
+    image: datalust/seq:2026.1.17182
     container_name: ${SEQ_CONTAINER_NAME:-tendersync-seq}
     restart: unless-stopped
     environment:
