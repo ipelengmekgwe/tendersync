@@ -7,12 +7,12 @@ Read `PLAN.md` first. It holds the product scope, the verified eTenders facts, t
 ```bash
 dotnet build TenderSync.slnx
 dotnet test TenderSync.slnx
-docker compose -f deploy/docker/docker-compose.yml up -d     # PostgreSQL 17 + Seq
+docker compose -f deploy/docker/docker-compose.yml up -d postgres seq   # PostgreSQL 17 + Seq only (no service list = whole stack)
 dotnet run --project src/TenderSync.Api                        # http://localhost:5000
 dotnet run --project src/TenderSync.Worker                     # http://localhost:5001
 ```
 
-Secrets go in `dotnet user-secrets` (API and Worker have `UserSecretsId`) or `.env` (never committed). `.env.example` lists every variable.
+Secrets go in `dotnet user-secrets` (API and Worker have `UserSecretsId`) or `.env` (never committed). `.env.example` lists every variable. The full stack in Docker is `deploy/docker/tendersync.ps1 up` (runbook: `docs/runbooks/local.md`).
 
 ## Layering (enforced by `tests/TenderSync.Architecture.Tests`)
 
@@ -67,6 +67,7 @@ If the architecture tests fail, fix the dependency, not the test.
 - Demo data: `DemoDataSeeder` (Infrastructure, Worker `--seed-demo`, Development only) writes the `DEMO/E2E/0001` tender, its PDF, requirements, report and a New match, and clears domain events before saving so nothing reaches the outbox. The dashboard e2e flow depends on it; keep the bid number, the page texts and the page-2/page-3 sources stable or update `web/e2e/match-flow.spec.ts` with them.
 - Admin and settings (WP14): the API host cannot start jobs, so "run now" (`RunJobNowCommand`) writes `JobRunRequested` to the outbox and `TriggerRequestedJob` calls `IPipelineScheduler.TriggerRecurringJob` in the Worker. Recurring jobs are listed through `IRecurringJobCatalog`, which reads Hangfire.PostgreSql's `hangfire.set`/`hangfire.hash` tables with read-only SQL in Infrastructure; keep Hangfire schema knowledge there. User accounts go through `IIdentityService` (`ListUsersAsync`, `CreateUserAsync`, `UpdateUserAsync`). Disabled means an indefinite lockout and revokes refresh tokens. No Identity token providers are registered, so passwords are replaced with Remove/AddPassword. `UpdateUserCommand` refuses to demote or disable yourself or the last enabled admin. `CompanyProfileInput.ApplyTo` keeps the stored tax PIN when `TaxPin` is null (responses only carry it masked); an empty string clears it.
 - `Llm:FakeAnswers:{purpose}` preloads JSON answers into `FakeLlmClient` for keyless local and e2e runs (route the purpose with `Llm:Routing:{purpose}=fake`). Never set it in shared configuration: every call gets the same answer.
+- Docker (WP15): `deploy/docker/dotnet.Dockerfile` has `api`, `worker` and `migrate` targets; containers listen on 8080, store documents in `/data/documents` (the `documents` volume) and run as the image's non-root `app` user. A new project means a new `COPY .../*.csproj` line before the restore. Anything the hosts read from configuration can be set in `deploy/docker/.env` under its `Section__Key` name; only container-specific values (connection string to `postgres`, Seq at `http://seq`, document path) are fixed in the Compose file. Keep secrets out of the base `docker-compose.yml`; dev placeholders live only in `docker-compose.override.yml`. The Compose connection string sets `Gss Encryption Mode=Disable`: Npgsql otherwise probes Kerberos, and the aspnet image has no `libgssapi_krb5`. `Hangfire:TriggerOnStart` lists recurring job ids the Worker runs once at start (`JobSchedule.TriggerOnStart`).
 - Domain entities have private setters and behaviour methods (`Tender.ApplyRelease(...)`), never public property bags. Domain events are plain records in `Domain/Events/`.
 - IDs are `Guid` v7 generated in Domain. Timestamps are `DateTimeOffset` in UTC. Display in SAST only at the edge.
 - Prompts are versioned markdown under `Application/Prompts/<purpose>/v<N>.md`; a change to a prompt bumps the version and must pass its eval.

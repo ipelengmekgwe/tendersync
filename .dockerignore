@@ -1,0 +1,16 @@
+# Build context for deploy/docker/dotnet.Dockerfile (repository root). The web image uses web/ as its context.
+.git
+.github
+.vs
+.vscode
+**/bin
+**/obj
+**/TestResults
+web
+tests
+docs
+deploy/azure
+**/*.local.json
+**/.env
+**/.env.*
+!**/.env.example

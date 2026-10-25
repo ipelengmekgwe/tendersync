@@ -42,6 +42,8 @@ Llm__Routing__classify=fake Llm__FakeAnswers__classify='{"categories":[{"code":"
 
 `Llm:FakeAnswers:{purpose}` preloads a canned JSON answer into the fake provider. Use it only for local and e2e runs: every call returns the same answer.
 
+WP15 runs the whole system in Docker (PLAN.md §15). `deploy/docker/dotnet.Dockerfile` builds the `api`, `worker` and `migrate` images from one restore and publish, and `web/Dockerfile` builds the dashboard. `deploy/docker/docker-compose.yml` adds them to PostgreSQL and Seq. A one-shot `migrate` container applies migrations and reference data before the API and Worker start, and a `documents` volume is shared by both. The Worker runs the ingest once at start (`Hangfire:TriggerOnStart`), and every port binds to 127.0.0.1. `docker-compose.override.yml`, loaded when Compose runs from `deploy/docker`, switches to Development and supplies public placeholder secrets, so `docker compose up` works from a clean clone. The base file alone is the production-like stack and needs real secrets in `deploy/docker/.env`. `tendersync.ps1` and `tendersync.sh` wrap init (random secrets), up (waits for health), infra, status, logs, ingest, seed-demo, down and reset. The runbook is `docs/runbooks/local.md`. Because the Compose file now starts the whole system, run `up -d postgres seq` when you only want the database and Seq.
+
 One-shot operator modes on the Worker (no Hangfire server is started):
 
 ```bash
@@ -144,12 +146,31 @@ In Development the API applies migrations and seeds on start (`Database:MigrateO
 
 ## Quick start
 
+Everything in Docker (PostgreSQL, Seq, migrations, API, Worker, dashboard), then open http://localhost:3000:
+
+```powershell
+./deploy/docker/tendersync.ps1 up
+```
+
+`./deploy/docker/tendersync.sh up` does the same in bash. Or develop on the host with only the database and Seq in Docker:
+
 ```bash
-docker compose -f deploy/docker/docker-compose.yml up -d
+docker compose -f deploy/docker/docker-compose.yml up -d postgres seq
+```
+
+```bash
 dotnet build TenderSync.slnx
+```
+
+```bash
 dotnet test TenderSync.slnx
+```
+
+```bash
 dotnet run --project src/TenderSync.Api
 ```
+
+`docs/runbooks/local.md` covers both ways, the helper commands and the production-like stack.
 
 | Service | URL |
 |---|---|
@@ -159,7 +180,7 @@ dotnet run --project src/TenderSync.Api
 | Seq logs | http://localhost:5341 |
 | PostgreSQL | `localhost:5432`, database `tendersync` |
 
-Copy `.env.example` to `.env` to change ports or credentials for Compose. Application secrets go in `dotnet user-secrets`.
+Compose reads `deploy/docker/.env` (`tendersync.ps1 init` writes one with random secrets; `deploy/docker/.env.example` lists every variable). For `dotnet run`, application secrets go in `dotnet user-secrets`.
 
 ## Repository layout
 

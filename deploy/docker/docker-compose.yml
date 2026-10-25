@@ -1,17 +1,53 @@
-# Local infrastructure for TenderSync. The api, worker and web services are added in WP15.
-# Usage: docker compose -f deploy/docker/docker-compose.yml up -d
+# TenderSync, the whole system on one machine (PLAN.md §15): PostgreSQL 17, Seq, a one-shot migrate job, the API, the
+# Worker (Hangfire) and the Next.js dashboard.
+#
+#   Full stack, dev defaults:  deploy/docker/tendersync.ps1 up   (or: cd deploy/docker && docker compose up -d --build)
+#   Database and Seq only:     deploy/docker/tendersync.ps1 infra  (for `dotnet run` and `npm run dev` on the host)
+#   Production-like:           docker compose -f deploy/docker/docker-compose.yml up -d --build  (needs deploy/docker/.env)
+#
+# Run from deploy/docker, `docker compose` also loads docker-compose.override.yml (Development settings and insecure
+# placeholder secrets); naming this file with -f alone skips it. Secrets come from deploy/docker/.env
+# (tendersync.ps1 init writes one with random values; .env.example lists every variable). Ports bind to
+# BIND_ADDRESS (default 127.0.0.1, this machine only).
 name: tendersync
+
+x-dotnet-environment: &dotnet-environment
+  ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+  ConnectionStrings__TenderSync: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tendersync};Username=${POSTGRES_USER:-tendersync};Password=${POSTGRES_PASSWORD:-tendersync};Gss Encryption Mode=Disable
+  Serilog__WriteTo__1__Args__serverUrl: http://seq
+  Jwt__SigningKey: ${Jwt__SigningKey:-}
+  Seed__AdminEmail: ${Seed__AdminEmail:-}
+  Seed__AdminPassword: ${Seed__AdminPassword:-}
+  TENDERSYNC_MASTER_KEY: ${TENDERSYNC_MASTER_KEY:-}
+  DocumentStore__Provider: FileSystem
+  DocumentStore__FileSystem__RootPath: /data/documents
+  Notifications__DashboardBaseUrl: ${PUBLIC_WEB_URL:-http://localhost:3000}
+
+x-dotnet-service: &dotnet-service
+  restart: unless-stopped
+  # Any other setting (Llm__Anthropic__ApiKey, Notifications__Email__SmtpHost, ...) goes in .env under its own name.
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    - documents:/data/documents
+  depends_on:
+    postgres:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
 
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: tendersync-postgres
+    container_name: ${POSTGRES_CONTAINER_NAME:-tendersync-postgres}
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tendersync}
       POSTGRES_USER: ${POSTGRES_USER:-tendersync}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tendersync}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -22,16 +58,84 @@ services:
 
   seq:
     image: datalust/seq:2025.2
-    container_name: tendersync-seq
+    container_name: ${SEQ_CONTAINER_NAME:-tendersync-seq}
+    restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
       # Local-only log viewer. Seq 2025+ refuses to start without either an admin password or this opt-out.
       SEQ_FIRSTRUN_NOAUTHENTICATION: ${SEQ_NO_AUTH:-True}
     ports:
-      - "${SEQ_PORT:-5341}:80"
+      - "${BIND_ADDRESS:-127.0.0.1}:${SEQ_PORT:-5341}:80"
     volumes:
       - seq-data:/data
+
+  # Applies EF migrations and reference data (categories, municipalities, roles, the first admin), then exits.
+  # api and worker wait for it, so they never race on a schema change.
+  migrate:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/dotnet.Dockerfile
+      target: migrate
+    image: tendersync-migrate:${TENDERSYNC_TAG:-local}
+    restart: "no"
+    env_file:
+      - path: .env
+        required: false
+    environment: *dotnet-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *dotnet-service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/dotnet.Dockerfile
+      target: api
+    image: tendersync-api:${TENDERSYNC_TAG:-local}
+    environment:
+      <<: *dotnet-environment
+      Cors__AllowedOrigins__0: ${PUBLIC_WEB_URL:-http://localhost:3000}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${API_PORT:-5000}:8080"
+
+  worker:
+    <<: *dotnet-service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/dotnet.Dockerfile
+      target: worker
+    image: tendersync-worker:${TENDERSYNC_TAG:-local}
+    environment:
+      <<: *dotnet-environment
+      # Fetch tenders as soon as the Worker starts instead of at the next half hour. Empty turns it off.
+      Hangfire__TriggerOnStart__0: ${WORKER_TRIGGER_ON_START-ingest-recent-releases}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${WORKER_PORT:-5001}:8080"
+
+  web:
+    build:
+      context: ../../web
+    image: tendersync-web:${TENDERSYNC_TAG:-local}
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://api:8080
+      # Secure cookies need HTTPS; set true behind a TLS proxy.
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/login || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 6
 
 volumes:
   postgres-data:
   seq-data:
+  # Tender bid packs and encrypted company documents, shared by api (downloads) and worker (writes).
+  documents:
