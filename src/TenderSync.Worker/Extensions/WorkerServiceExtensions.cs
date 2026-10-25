@@ -30,9 +30,10 @@ public static class WorkerServiceExtensions
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             .UsePostgreSqlStorage(
-                // Read from configuration, not NpgsqlDataSource.ConnectionString: the data source strips the password.
-                provider.GetRequiredService<IConfiguration>().GetConnectionString(TenderSync.Infrastructure.DependencyInjection.ConnectionStringName)
-                    ?? throw new InvalidOperationException("Connection string 'TenderSync' is not configured."),
+                storage => storage.UseNpgsqlConnection(
+                    // Read from configuration, not NpgsqlDataSource.ConnectionString: the data source strips the password.
+                    provider.GetRequiredService<IConfiguration>().GetConnectionString(TenderSync.Infrastructure.DependencyInjection.ConnectionStringName)
+                        ?? throw new InvalidOperationException("Connection string 'TenderSync' is not configured.")),
                 new PostgreSqlStorageOptions
                 {
                     SchemaName = HangfireSchema,
