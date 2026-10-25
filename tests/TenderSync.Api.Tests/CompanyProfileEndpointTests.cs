@@ -58,6 +58,11 @@ public class CompanyProfileEndpointTests(ApiFactory factory)
         updated.BbbeeLevel.Should().Be(1);
         updated.ShareKeyPersonnelWithModel.Should().BeFalse();
 
+        var kept = await (await admin.PutAsJsonAsync($"/api/v1/company-profiles/{created.Id}", Input(created.Name) with { TaxPin = null })).Content.ReadFromJsonAsync<CompanyProfileDto>();
+        kept!.TaxPinMasked.Should().Be("*********T-9", "an editor that only saw the masked PIN must not wipe it");
+        var cleared = await (await admin.PutAsJsonAsync($"/api/v1/company-profiles/{created.Id}", Input(created.Name) with { TaxPin = "" })).Content.ReadFromJsonAsync<CompanyProfileDto>();
+        cleared!.TaxPinMasked.Should().BeNull();
+
         var invalid = await admin.PutAsJsonAsync($"/api/v1/company-profiles/{created.Id}", Input(created.Name) with { BbbeeLevel = 9, CidbClasses = ["GBX"], ContactJson = "not json" });
         invalid.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var problem = await invalid.Content.ReadAsStringAsync();

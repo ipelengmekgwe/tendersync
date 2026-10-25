@@ -61,6 +61,7 @@ try
     app.MapTenderEndpoints();
     app.MapDocumentEndpoints();
     app.MapMatchEndpoints();
+    app.MapApplicationEndpoints();
     app.MapInterestCategoryEndpoints();
     app.MapCompanyProfileEndpoints();
     app.MapNotificationEndpoints();

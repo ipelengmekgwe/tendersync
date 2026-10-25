@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using TenderSync.Application.Abstractions;
 using TenderSync.Application.Abstractions.Identity;
+using TenderSync.Application.Abstractions.Jobs;
 using TenderSync.Application.Abstractions.Persistence;
 using TenderSync.Infrastructure.Documents;
 using TenderSync.Infrastructure.ETenders;
@@ -54,6 +55,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IReadDb, DapperReadDb>();
+        services.AddScoped<IRecurringJobCatalog, Jobs.HangfireRecurringJobCatalog>();
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<DemoDataSeeder>();
         services.AddScoped<IIdentityService, IdentityService>();

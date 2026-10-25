@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, FileSearch, Gauge, Inbox, Menu, Settings, ShieldCheck } from "lucide-react";
+import { Building2, FileCheck2, FileSearch, Gauge, Inbox, Menu, Settings, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -18,14 +18,15 @@ interface NavItem {
   soon?: string;
 }
 
-/** Navigation (PLAN.md §11). Pages that later work packages deliver are listed, marked with the package that adds them. */
+/** Navigation (PLAN.md §11). Items a role cannot use are hidden; the pages and the API check the role again. */
 const NAV: NavItem[] = [
   { href: "/", label: "Overview", icon: Gauge },
   { href: "/matches", label: "Matches", icon: Inbox },
   { href: "/tenders", label: "Tenders", icon: FileSearch },
-  { href: "/company", label: "Company", icon: Building2, role: "Reviewer", soon: "WP14" },
-  { href: "/settings", label: "Settings", icon: Settings, soon: "WP14" },
-  { href: "/admin", label: "Admin", icon: ShieldCheck, role: "Admin", soon: "WP14" },
+  { href: "/applications", label: "Applications", icon: FileCheck2, role: "Reviewer", soon: "Phase 2" },
+  { href: "/company", label: "Company", icon: Building2, role: "Reviewer" },
+  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/admin", label: "Admin", icon: ShieldCheck, role: "Admin" },
 ];
 
 function NavLinks({ user, onNavigate }: { user: User; onNavigate?: () => void }) {

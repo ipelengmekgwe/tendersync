@@ -184,3 +184,25 @@ export function documentStatusTone(status: number): Tone {
       return "outline";
   }
 }
+
+export const CompanyDocumentType = {
+  0: "Other",
+  1: "Company registration",
+  2: "CSD report",
+  3: "Tax PIN",
+  4: "B-BBEE certificate",
+  5: "Company profile",
+  6: "Reference letter",
+  7: "CV",
+  8: "Certification",
+  9: "Pricing template",
+  10: "Proposal template",
+  11: "SBD 4",
+  12: "SBD 6.1",
+} as const;
+
+export const ApplicationStatus = { 0: "Draft", 1: "In review", 2: "Approved", 3: "Packaged", 4: "Submitted", 5: "Withdrawn" } as const;
+
+/** Application roles (ADR-011): Admin ⊃ Reviewer ⊃ Viewer. */
+export const ROLES = ["Admin", "Reviewer", "Viewer"] as const;
+export type Role = (typeof ROLES)[number];
