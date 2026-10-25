@@ -952,6 +952,209 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bid applications, newest first. Empty in v1: applications are created from Phase 2. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApplicationListItemDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interest-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every interest category, enabled or not, ordered by code. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InterestCategoryDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates a category. Codes are unique (409 when taken). */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InterestCategoryDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interest-categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces name, description, keywords, negative keywords, weight and enabled. Reclassify a tender to see the effect. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InterestCategoryInput"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InterestCategoryDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Deletes a category. Disabling it is the reversible alternative. */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/interest-categories/test": {
         parameters: {
             query?: never;
@@ -1845,6 +2048,236 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recurring jobs registered by the Worker: cron (SAST), queue, next and last execution, state of the last run. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecurringJobInfo"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/jobs/{id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Asks the Worker to run a recurring job now (through the outbox; it starts within about a minute). */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunJobNowResponse"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every account with its role, disabled flag, lockout and last sign-in. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserAccount"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Creates an account with one role (Admin, Reviewer or Viewer). */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateUserCommand"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserAccount"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Changes display name and role, disables or re-enables (revoking sessions), optionally sets a new password. The last enabled admin cannot be demoted or disabled. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateUserRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserAccount"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/encryption/rewrap": {
         parameters: {
             query?: never;
@@ -1885,6 +2318,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ApplicationListItemDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenderId: string;
+            bidNumber: string;
+            title: string;
+            /** Format: date-time */
+            closingAt: null | string;
+            /** Format: uuid */
+            companyProfileId: string;
+            companyName: string;
+            status: components["schemas"]["ApplicationStatus"];
+            /** Format: date-time */
+            submittedAt: null | string;
+            submissionReference: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ApplicationStatus: number;
         AuditLogDto: {
             /** Format: uuid */
             id: string;
@@ -2073,6 +2526,22 @@ export interface components {
             /** Format: double */
             dailyCapUsd: number;
         };
+        CreateRequest: {
+            code: string;
+            name: string;
+            description: null | string;
+            keywords: string[];
+            negativeKeywords: string[];
+            /** Format: int32 */
+            weight: number;
+            enabled: boolean;
+        };
+        CreateUserCommand: {
+            email: string;
+            displayName: string;
+            role: string;
+            password: string;
+        };
         DocumentPageTextDto: {
             /** Format: int32 */
             page: number;
@@ -2135,6 +2604,29 @@ export interface components {
         };
         /** Format: binary */
         IFormFile: string;
+        InterestCategoryDto: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            name: string;
+            description: null | string;
+            keywords: string[];
+            negativeKeywords: string[];
+            /** Format: int32 */
+            weight: number;
+            enabled: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        InterestCategoryInput: {
+            name: string;
+            description: null | string;
+            keywords: string[];
+            negativeKeywords: string[];
+            /** Format: int32 */
+            weight: number;
+            enabled: boolean;
+        };
         JobRunDto: {
             /** Format: uuid */
             id: string;
@@ -2484,6 +2976,18 @@ export interface components {
             end: string;
             timeZone?: null | string;
         };
+        RecurringJobInfo: {
+            id: string;
+            cron: string;
+            timeZone: null | string;
+            queue: null | string;
+            /** Format: date-time */
+            nextExecution: null | string;
+            /** Format: date-time */
+            lastExecution: null | string;
+            lastJobState: null | string;
+            error: null | string;
+        };
         ReferenceProject: {
             client: string;
             scope: string;
@@ -2555,6 +3059,11 @@ export interface components {
             /** Format: int32 */
             alreadyCurrent: number;
             errors: string[];
+        };
+        RunJobNowResponse: {
+            jobId: string;
+            /** Format: date-time */
+            requestedAt: string;
         };
         SourceHealthDto: {
             /** Format: uuid */
@@ -2768,6 +3277,26 @@ export interface components {
             status: null | components["schemas"]["MatchStatus"];
             notes: null | string;
             dismissReason: null | string;
+        };
+        UpdateUserRequest: {
+            displayName: string;
+            role: string;
+            disabled: boolean;
+            newPassword: null | string;
+        };
+        UserAccount: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            displayName: string;
+            roles: string[];
+            disabled: boolean;
+            /** Format: date-time */
+            lockedOutUntil: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastLoginAt: null | string;
         };
         UserDto: {
             /** Format: uuid */

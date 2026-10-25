@@ -29,12 +29,16 @@ public sealed record CompanyProfileInput(
     string? AddressJson = null,
     bool ShareKeyPersonnelWithModel = false)
 {
-    /// <summary>Applies every section to the entity; the entity enforces the domain ranges.</summary>
+    /// <summary>
+    /// Applies every section to the entity; the entity enforces the domain ranges. Responses only carry the tax PIN masked,
+    /// so a null <see cref="TaxPin"/> keeps the stored PIN (an editor that never saw it can still save) and an empty
+    /// string clears it.
+    /// </summary>
     public void ApplyTo(CompanyProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
         profile.UpdateDetails(Name, TradingName, RegistrationNumber, VatNumber, YearsTrading, EmployeeCount, AnnualTurnover);
-        profile.UpdateCompliance(CsdNumber, CsdExpiry, TaxPin, TaxPinExpiry, BbbeeLevel, BbbeeExpiry, BbbeeCertificateType);
+        profile.UpdateCompliance(CsdNumber, CsdExpiry, TaxPin ?? profile.TaxPin, TaxPinExpiry, BbbeeLevel, BbbeeExpiry, BbbeeCertificateType);
         profile.UpdateCidb(CidbGrade, CidbClasses ?? []);
         profile.UpdateProvinces(Provinces ?? []);
         profile.UpdateCapabilities(Capabilities ?? CompanyCapabilities.Empty);

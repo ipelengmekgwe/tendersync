@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using TenderSync.Application.Abstractions;
 using TenderSync.Application.Abstractions.Persistence;
+using TenderSync.Application.Common.Auditing;
 using TenderSync.Application.Common.Exceptions;
 using TenderSync.Application.Common.Messaging;
 using TenderSync.Application.Security;
@@ -16,7 +17,12 @@ namespace TenderSync.Application.Features.Matches.Commands.UpdateMatch;
 /// (ADR-015): Applying and Applied only record what a person decided and did.
 /// </summary>
 [Authorize(Roles.Reviewer)]
-public sealed record UpdateMatchCommand(Guid Id, MatchStatus? Status = null, string? Notes = null, string? DismissReason = null) : ICommand<MatchDto>;
+public sealed record UpdateMatchCommand(Guid Id, MatchStatus? Status = null, string? Notes = null, string? DismissReason = null) : ICommand<MatchDto>, IAuditedEntityReference
+{
+    public string AuditEntityType => nameof(TenderMatch);
+
+    public string? AuditEntityId => Id.ToString();
+}
 
 public sealed class UpdateMatchCommandValidator : AbstractValidator<UpdateMatchCommand>
 {

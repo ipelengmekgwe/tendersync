@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using TenderSync.Application.Abstractions.Llm;
 using TenderSync.Application.Features.Llm;
 
@@ -41,7 +42,17 @@ public static class LlmServiceExtensions
         services.TryAddSingleton<LlmPricing>();
         services.AddKeyedSingleton<ILlmClient, AnthropicLlmClient>(LlmOptions.AnthropicProvider);
         services.AddKeyedSingleton<ILlmClient, OpenAiCompatibleLlmClient>(LlmOptions.OpenAiProvider);
-        services.AddSingleton<FakeLlmClient>();
+        services.AddSingleton(provider =>
+        {
+            // Configured answers (Llm:FakeAnswers) are loaded first; tests register their own on top.
+            var fake = new FakeLlmClient();
+            foreach (var (purpose, json) in provider.GetRequiredService<IOptions<LlmOptions>>().Value.FakeAnswers)
+            {
+                fake.AnswerJson(purpose, json);
+            }
+
+            return fake;
+        });
         services.AddKeyedSingleton<ILlmClient>(LlmOptions.FakeProvider, (provider, _) => provider.GetRequiredService<FakeLlmClient>());
         services.AddSingleton<ILlmClientRouter, LlmClientRouter>();
 

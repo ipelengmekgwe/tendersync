@@ -20,6 +20,8 @@ public sealed class NoPipelineScheduler : IPipelineScheduler
 
     public void EnqueueNotificationSend(Guid notificationId) => throw NotSupported();
 
+    public void TriggerRecurringJob(string jobId) => throw NotSupported();
+
     private static InvalidOperationException NotSupported() =>
         new("This host does not run pipeline jobs. Domain events are dispatched by the Worker's outbox job, which registers the Hangfire scheduler.");
 }
