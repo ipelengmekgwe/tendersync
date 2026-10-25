@@ -1,4 +1,5 @@
 using Hangfire;
+using Microsoft.Extensions.Logging;
 using TenderSync.Application.Common;
 
 namespace TenderSync.Worker.Jobs;
@@ -26,6 +27,33 @@ public static class JobSchedule
         manager.AddOrUpdate<ClosingRemindersJob>(ClosingRemindersJob.RecurringId, job => job.ExecuteAsync(CancellationToken.None), "0 6 * * *", options);
         manager.AddOrUpdate<BriefingRemindersJob>(BriefingRemindersJob.RecurringId, job => job.ExecuteAsync(CancellationToken.None), "0 6 * * *", options);
         manager.AddOrUpdate<DocumentExpiryCheckJob>(DocumentExpiryCheckJob.RecurringId, job => job.ExecuteAsync(CancellationToken.None), "30 6 * * *", options);
+    }
+
+    /// <summary>
+    /// Runs the listed recurring jobs once, now (configuration <c>Hangfire:TriggerOnStart</c>). A fresh Compose stack sets
+    /// it to <see cref="IngestRecentReleasesJob.RecurringId"/> so tenders arrive without waiting for the next half hour.
+    /// Ids that are not registered are skipped with a warning. Returns the ids that were triggered.
+    /// </summary>
+    public static IReadOnlyList<string> TriggerOnStart(IRecurringJobManager manager, IEnumerable<string> jobIds, ILogger logger)
+    {
+        ArgumentNullException.ThrowIfNull(manager);
+        ArgumentNullException.ThrowIfNull(jobIds);
+        ArgumentNullException.ThrowIfNull(logger);
+        var triggered = new List<string>();
+        foreach (var id in jobIds.Select(i => i.Trim()).Where(i => i.Length > 0).Distinct(StringComparer.Ordinal))
+        {
+            if (!ExpectedRecurringJobIds.Contains(id, StringComparer.Ordinal))
+            {
+                logger.LogWarning("Hangfire:TriggerOnStart names {JobId}, which is not a recurring job; skipped", id);
+                continue;
+            }
+
+            manager.Trigger(id);
+            triggered.Add(id);
+            logger.LogInformation("Triggered {JobId} on start (Hangfire:TriggerOnStart)", id);
+        }
+
+        return triggered;
     }
 
     /// <summary>Recurring job ids that must exist after <see cref="Register"/>; checked by tests and the readiness view.</summary>

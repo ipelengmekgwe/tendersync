@@ -7,12 +7,12 @@ Read `PLAN.md` first. It holds the product scope, the verified eTenders facts, t
 ```bash
 dotnet build TenderSync.slnx
 dotnet test TenderSync.slnx
-docker compose -f deploy/docker/docker-compose.yml up -d     # PostgreSQL 17 + Seq
+docker compose -f deploy/docker/docker-compose.yml up -d postgres seq   # PostgreSQL 17 + Seq only (no service list = whole stack)
 dotnet run --project src/TenderSync.Api                        # http://localhost:5000
 dotnet run --project src/TenderSync.Worker                     # http://localhost:5001
 ```
 
-Secrets go in `dotnet user-secrets` (API and Worker have `UserSecretsId`) or `.env` (never committed). `.env.example` lists every variable.
+Secrets go in `dotnet user-secrets` (API and Worker have `UserSecretsId`) or `.env` (never committed). `.env.example` lists every variable. The full stack in Docker is `deploy/docker/tendersync.ps1 up` (runbook: `docs/runbooks/local.md`).
 
 ## Layering (enforced by `tests/TenderSync.Architecture.Tests`)
 
@@ -65,6 +65,7 @@ If the architecture tests fail, fix the dependency, not the test.
 - Status tracking (PLAN.md §7.7): never set a tender's status directly. `Tender.ApplyRelease` applies a release and detects cancellation wording (`CancellationDetector`); `Tender.DeriveStatus(now)` derives Open/ClosingSoon/Closed/Awarded and records the transition; Awarded and Cancelled are sticky. Refreshing a tender means `TenderIngestor.RefreshAsync(ocid)` so the diff, events and notifications are the same as for an ingest. Reminder buckets come from `ReminderBuckets` (South African calendar days, fixed +02:00) and are deduplicated on the target's SAST date; add new dated reminders to `ReminderService` the same way.
 - Matches (PLAN.md §10, §11): the workflow state changes only through `UpdateMatchCommand` (PATCH /matches/{id}, Reviewer), which calls `TenderMatch.SetStatus`/`Dismiss`/`SetNotes`; dismissing needs a reason. The inbox SQL lives in `ListMatchesQuery` (newest qualification report per tender and profile through a lateral join, counts per status for the tabs). `GetOverviewQuery` reuses it through `ISender` instead of copying the SQL, and fills `Cost` only for Admins (it mirrors the Admin-only `/admin/llm-calls`).
 - Demo data: `DemoDataSeeder` (Infrastructure, Worker `--seed-demo`, Development only) writes the `DEMO/E2E/0001` tender, its PDF, requirements, report and a New match, and clears domain events before saving so nothing reaches the outbox. The dashboard e2e flow depends on it; keep the bid number, the page texts and the page-2/page-3 sources stable or update `web/e2e/match-flow.spec.ts` with them.
+- Docker (WP15): `deploy/docker/dotnet.Dockerfile` has `api`, `worker` and `migrate` targets; containers listen on 8080, store documents in `/data/documents` (the `documents` volume) and run as the image's non-root `app` user. A new project means a new `COPY .../*.csproj` line before the restore. Anything the hosts read from configuration can be set in `deploy/docker/.env` under its `Section__Key` name; only container-specific values (connection string to `postgres`, Seq at `http://seq`, document path) are fixed in the Compose file. Keep secrets out of the base `docker-compose.yml`; dev placeholders live only in `docker-compose.override.yml`. The Compose connection string sets `Gss Encryption Mode=Disable`: Npgsql otherwise probes Kerberos, and the aspnet image has no `libgssapi_krb5`. `Hangfire:TriggerOnStart` lists recurring job ids the Worker runs once at start (`JobSchedule.TriggerOnStart`).
 - Domain entities have private setters and behaviour methods (`Tender.ApplyRelease(...)`), never public property bags. Domain events are plain records in `Domain/Events/`.
 - IDs are `Guid` v7 generated in Domain. Timestamps are `DateTimeOffset` in UTC. Display in SAST only at the edge.
 - Prompts are versioned markdown under `Application/Prompts/<purpose>/v<N>.md`; a change to a prompt bumps the version and must pass its eval.

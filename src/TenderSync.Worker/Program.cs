@@ -63,7 +63,12 @@ try
 
     using (var scope = app.Services.CreateScope())
     {
-        JobSchedule.Register(scope.ServiceProvider.GetRequiredService<IRecurringJobManager>());
+        var recurring = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        JobSchedule.Register(recurring);
+        if (app.Configuration.GetValue("Hangfire:ServerEnabled", true))
+        {
+            JobSchedule.TriggerOnStart(recurring, app.Configuration.GetSection("Hangfire:TriggerOnStart").Get<string[]>() ?? [], app.Logger);
+        }
     }
 
     await app.RunAsync();

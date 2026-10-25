@@ -32,6 +32,8 @@ WP12 adds the dashboard shell (PLAN.md §11, ADR-010/011): a Next.js 15 app in `
 
 WP13 adds the daily screens (PLAN.md §11). `/` shows new matches, matched tenders closing within 7 days, pipeline health (newest run per job, failed runs in the last 24 hours, newest probe per source), model cost this month (Admins only) and company documents or registrations expiring within 30 days, all from `GET /api/v1/overview`. `/matches` is the inbox: tabs per status (New, Reviewing, Applying, Applied, Dismissed) with counts, relevance, the newest verdict, a closing countdown and quick actions; dismissing asks for a reason. It reads `GET /api/v1/matches` (filters `Status`, `TenderId`, `CompanyProfileId`, `ClosingWithinDays`, `ActiveOnly`, `Sort`, paging) and changes matches with `PATCH /api/v1/matches/{id}` (Reviewer; status, notes, dismiss reason). These calls only record decisions; nothing is ever submitted (ADR-015). `/tenders` gains a closing-window filter and saved views, which are kept in the browser's localStorage. `/tenders/[id]` has the header facts, the match status and notes, Summary, **Can we bid?** (verdict, score, estimated functionality against the threshold, missing items, checks, questions), Requirements with source badges, Documents and History, plus reviewer actions: download documents, extract, qualify, reclassify. A source badge opens `/tenders/[id]/documents/[docId]?page=N`, a react-pdf viewer that starts at that page and highlights the quoted text. Documents in other formats show their extracted text. Every page carries the disclaimer banner and works at phone width. `npm run test:e2e` now also runs the WP13 flow (new match → open → change status → source opens the PDF at its page), which needs the demo tender from `--seed-demo`.
 
+WP15 runs the whole system in Docker (PLAN.md §15). `deploy/docker/dotnet.Dockerfile` builds the `api`, `worker` and `migrate` images from one restore and publish, and `web/Dockerfile` builds the dashboard. `deploy/docker/docker-compose.yml` adds them to PostgreSQL and Seq. A one-shot `migrate` container applies migrations and reference data before the API and Worker start, and a `documents` volume is shared by both. The Worker runs the ingest once at start (`Hangfire:TriggerOnStart`), and every port binds to 127.0.0.1. `docker-compose.override.yml`, loaded when Compose runs from `deploy/docker`, switches to Development and supplies public placeholder secrets, so `docker compose up` works from a clean clone. The base file alone is the production-like stack and needs real secrets in `deploy/docker/.env`. `tendersync.ps1` and `tendersync.sh` wrap init (random secrets), up (waits for health), infra, status, logs, ingest, seed-demo, down and reset. The runbook is `docs/runbooks/local.md`. Because the Compose file now starts the whole system, run `up -d postgres seq` when you only want the database and Seq.
+
 One-shot operator modes on the Worker (no Hangfire server is started):
 
 ```bash
@@ -134,12 +136,31 @@ In Development the API applies migrations and seeds on start (`Database:MigrateO
 
 ## Quick start
 
+Everything in Docker (PostgreSQL, Seq, migrations, API, Worker, dashboard), then open http://localhost:3000:
+
+```powershell
+./deploy/docker/tendersync.ps1 up
+```
+
+`./deploy/docker/tendersync.sh up` does the same in bash. Or develop on the host with only the database and Seq in Docker:
+
 ```bash
-docker compose -f deploy/docker/docker-compose.yml up -d
+docker compose -f deploy/docker/docker-compose.yml up -d postgres seq
+```
+
+```bash
 dotnet build TenderSync.slnx
+```
+
+```bash
 dotnet test TenderSync.slnx
+```
+
+```bash
 dotnet run --project src/TenderSync.Api
 ```
+
+`docs/runbooks/local.md` covers both ways, the helper commands and the production-like stack.
 
 | Service | URL |
 |---|---|
@@ -149,7 +170,7 @@ dotnet run --project src/TenderSync.Api
 | Seq logs | http://localhost:5341 |
 | PostgreSQL | `localhost:5432`, database `tendersync` |
 
-Copy `.env.example` to `.env` to change ports or credentials for Compose. Application secrets go in `dotnet user-secrets`.
+Compose reads `deploy/docker/.env` (`tendersync.ps1 init` writes one with random secrets; `deploy/docker/.env.example` lists every variable). For `dotnet run`, application secrets go in `dotnet user-secrets`.
 
 ## Repository layout
 
