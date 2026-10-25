@@ -17,12 +17,15 @@ try
     // environment variables; put only the keys you mean to override in it.
     builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.local.json", optional: true, reloadOnChange: true);
 
-    builder.Host.UseSerilog((context, services, configuration) => configuration
-        .ReadFrom.Configuration(context.Configuration)
-        .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .Enrich.WithMachineName()
-        .Enrich.WithProperty("Application", "TenderSync.Api"));
+    var applicationInsights = builder.AddAzureMonitorWhenConfigured("tendersync-api");
+    builder.Host.UseSerilog(
+        (context, services, configuration) => configuration
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .Enrich.WithMachineName()
+            .Enrich.WithProperty("Application", "TenderSync.Api"),
+        writeToProviders: applicationInsights);
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);

@@ -9,6 +9,7 @@ they rely on. The settings are applied by hand in the repository settings; nothi
 |---|---|---|
 | `ci.yml` | every pull request, pushes to `main` | .NET restore, vulnerable-package check, Release build, all tests (Testcontainers PostgreSQL) with coverage; dashboard `npm ci`, `npm audit` (production, high and above), lint, type-check, unit tests with coverage, production build. Coverage summaries appear on the run page; reports are artifacts. |
 | `docker.yml` | pushes to `main`; pull requests that touch `src/`, `web/`, `deploy/docker/`, `Directory.*` or `.dockerignore`; manual | Builds `tendersync-api`, `-worker`, `-migrate` and `-web`. On `main` it pushes them to `ghcr.io/<owner>/` tagged with the full SHA, `sha-<short>` and `latest`. Pull requests build without pushing. |
+| `deploy-azure.yml` | manual (dev or prod); `v*` tags deploy prod | Bicep in `deploy/azure`, generated secrets in Key Vault, images imported from GHCR, migrate job, then the apps move to the new image and a smoke check runs. Signs in to Azure through OIDC with per-environment variables; setup in `docs/runbooks/azure.md`. |
 | `evals.yml` | nightly 03:30 SAST; manual with a dollar cap | Live smoke test and classification precision/recall against `docs/golden/classification.jsonl`. Model calls stop at the cap (default $2). Skipped with a note when the `ANTHROPIC_API_KEY` secret is missing. |
 
 Dependabot (`.github/dependabot.yml`) proposes weekly updates for NuGet, npm, GitHub Actions, Dockerfiles and
@@ -38,6 +39,8 @@ Settings → Rules → Rulesets → New branch ruleset, target `main`:
   `packages: write` itself.
 - **Secrets → Actions:** `ANTHROPIC_API_KEY` for `evals.yml`. Nothing else is needed; GHCR uses the built-in
   `GITHUB_TOKEN`.
+- **Environments:** `dev` and `prod` hold the Azure identifiers for `deploy-azure.yml` as variables, not secrets.
+  `prod` should have required reviewers. See `docs/runbooks/azure.md`.
 - **Packages:** GHCR creates each package as private on its first push. To pull without signing in, open the package
   (Your profile → Packages), choose **Package settings → Change visibility**, and link it to this repository so the
   workflow keeps write access.

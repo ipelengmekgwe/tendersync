@@ -1,0 +1,250 @@
+name: Deploy to Azure
+
+# Deploys the images docker.yml published to GHCR into an Azure environment (PLAN.md §15, WP17):
+#   1. Bicep pass 1: identity, monitoring, Key Vault with the master key, registry, storage.
+#   2. Generated secrets (JWT signing key, PostgreSQL and first-admin passwords) are created in Key Vault if missing.
+#   3. The images for the commit are imported from GHCR into the environment's registry.
+#   4. Bicep pass 2: PostgreSQL, the Container Apps environment, the apps (still on the running image) and the migrate job
+#      (on the new image).
+#   5. The migrate job runs; only when it succeeds do api, worker and web move to the new image.
+#   6. Smoke check: the dashboard answers, the dashboard reaches the API, and every revision reports healthy.
+# Manual runs pick dev or prod; a v* tag deploys prod. Setup, cost notes and rollback: docs/runbooks/azure.md.
+# Secret values are only ever read into masked variables; nothing here prints them.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+      image_tag:
+        description: "Commit SHA of the images to deploy (default: the commit this run is on)"
+        required: false
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # OIDC sign-in to Azure, no stored client secret
+  packages: read # az acr import pulls from GHCR
+
+concurrency:
+  group: deploy-azure-${{ inputs.environment || 'prod' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy (${{ inputs.environment || 'prod' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: ${{ inputs.environment || 'prod' }}
+      url: ${{ steps.apps.outputs.web_url }}
+    env:
+      TARGET: ${{ inputs.environment || 'prod' }}
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+      AZURE_DEPLOYER_PRINCIPAL_ID: ${{ vars.AZURE_DEPLOYER_PRINCIPAL_ID }}
+      AZURE_OPERATOR_PRINCIPAL_ID: ${{ vars.AZURE_OPERATOR_PRINCIPAL_ID }}
+      TENDERSYNC_SEED_ADMIN_EMAIL: ${{ vars.TENDERSYNC_SEED_ADMIN_EMAIL }}
+    steps:
+      - name: Check environment variables
+        run: |
+          missing=0
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_RESOURCE_GROUP AZURE_DEPLOYER_PRINCIPAL_ID TENDERSYNC_SEED_ADMIN_EMAIL; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Environment variable $name is not set for the '$TARGET' GitHub environment (docs/runbooks/azure.md)."
+              missing=1
+            fi
+          done
+          exit "$missing"
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/checkout@v7
+
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Azure CLI extensions
+        run: az config set extension.use_dynamic_install=yes_without_prompt --only-show-errors
+
+      - name: Shared resources (Bicep pass 1)
+        id: shared
+        env:
+          TENDERSYNC_DEPLOY_APPS: "false"
+        run: |
+          outputs=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "tendersync-shared-$GITHUB_RUN_ID" \
+            --parameters "deploy/azure/$TARGET.bicepparam" \
+            --query properties.outputs --output json)
+          {
+            echo "vault=$(jq -r .keyVaultName.value <<<"$outputs")"
+            echo "registry=$(jq -r .registryName.value <<<"$outputs")"
+            echo "registry_server=$(jq -r .registryServer.value <<<"$outputs")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generated secrets
+        env:
+          VAULT: ${{ steps.shared.outputs.vault }}
+        run: |
+          # The deployer's Key Vault role was granted moments ago in pass 1; RBAC can take a few minutes to apply.
+          for attempt in $(seq 1 20); do
+            if existing=$(az keyvault secret list --vault-name "$VAULT" --query "[].name" --output tsv 2>/dev/null); then
+              break
+            fi
+            if [ "$attempt" -eq 20 ]; then
+              echo "::error::Could not list secrets in $VAULT; check the deployer's Key Vault Secrets Officer role."
+              exit 1
+            fi
+            sleep 15
+          done
+          for name in jwt-signing-key postgres-admin-password seed-admin-password; do
+            if grep -qx "$name" <<<"$existing"; then
+              echo "$name exists"
+              continue
+            fi
+            # 37 random letters and digits plus "Aa1", so Identity's and PostgreSQL's complexity rules always pass.
+            value="$(openssl rand -base64 64 | tr -dc 'A-Za-z0-9' | head -c 37)Aa1"
+            echo "::add-mask::$value"
+            az keyvault secret set --vault-name "$VAULT" --name "$name" --value "$value" --output none
+            echo "$name created"
+          done
+
+      - name: Import images from GHCR
+        env:
+          REGISTRY: ${{ steps.shared.outputs.registry }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          for image in api worker web migrate; do
+            az acr import \
+              --name "$REGISTRY" \
+              --source "ghcr.io/$owner/tendersync-$image:$IMAGE_TAG" \
+              --image "tendersync-$image:$IMAGE_TAG" \
+              --username "$GITHUB_ACTOR" --password "$GHCR_TOKEN" \
+              --force --output none
+            echo "tendersync-$image:$IMAGE_TAG imported"
+          done
+
+      - name: Apps (Bicep pass 2)
+        id: apps
+        env:
+          VAULT: ${{ steps.shared.outputs.vault }}
+          TENDERSYNC_DEPLOY_APPS: "true"
+          TENDERSYNC_MIGRATE_IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          # The apps keep the image they run until the migrate job has succeeded; a first deploy has none yet.
+          running=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "ca-tendersync-$TARGET-api" \
+            --query "properties.template.containers[0].image" --output tsv 2>/dev/null || true)
+          TENDERSYNC_APP_IMAGE_TAG="${running##*:}"
+          if [ -z "$running" ]; then
+            TENDERSYNC_APP_IMAGE_TAG="$IMAGE_TAG"
+          fi
+          export TENDERSYNC_APP_IMAGE_TAG
+          echo "Apps stay on $TENDERSYNC_APP_IMAGE_TAG until migrations for $IMAGE_TAG succeed"
+
+          TENDERSYNC_PRESENT_SECRETS=$(az keyvault secret list --vault-name "$VAULT" --query "[].name" --output json --only-show-errors | jq -c .)
+          export TENDERSYNC_PRESENT_SECRETS
+          TENDERSYNC_POSTGRES_ADMIN_PASSWORD=$(az keyvault secret show --vault-name "$VAULT" --name postgres-admin-password --query value --output tsv)
+          echo "::add-mask::$TENDERSYNC_POSTGRES_ADMIN_PASSWORD"
+          export TENDERSYNC_POSTGRES_ADMIN_PASSWORD
+
+          outputs=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "tendersync-apps-$GITHUB_RUN_ID" \
+            --parameters "deploy/azure/$TARGET.bicepparam" \
+            --query properties.outputs --output json)
+          {
+            echo "running_tag=$TENDERSYNC_APP_IMAGE_TAG"
+            echo "web_url=$(jq -r .webUrl.value <<<"$outputs")"
+            echo "migrate_job=$(jq -r .migrateJobName.value <<<"$outputs")"
+            echo "apps=$(jq -r '[.apiName.value, .workerName.value, .webName.value] | join(" ")' <<<"$outputs")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Migrate
+        env:
+          JOB: ${{ steps.apps.outputs.migrate_job }}
+        run: |
+          execution=$(az containerapp job start --resource-group "$RESOURCE_GROUP" --name "$JOB" --query name --output tsv)
+          echo "Started $execution"
+          for _ in $(seq 1 80); do
+            status=$(az containerapp job execution show --resource-group "$RESOURCE_GROUP" --name "$JOB" \
+              --job-execution-name "$execution" --query properties.status --output tsv)
+            case "$status" in
+              Succeeded) echo "Migrations applied"; exit 0 ;;
+              Failed|Stopped|Degraded)
+                echo "::error::Migrate job $execution ended as $status; the apps stay on the running image. Logs: docs/runbooks/azure.md#troubleshooting"
+                exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::Migrate job $execution did not finish in 20 minutes."
+          exit 1
+
+      - name: Move the apps to the new image
+        if: steps.apps.outputs.running_tag != env.IMAGE_TAG
+        env:
+          REGISTRY_SERVER: ${{ steps.shared.outputs.registry_server }}
+          APPS: ${{ steps.apps.outputs.apps }}
+        run: |
+          for app in $APPS; do
+            image="tendersync-${app##*-}"
+            az containerapp update --resource-group "$RESOURCE_GROUP" --name "$app" \
+              --image "$REGISTRY_SERVER/$image:$IMAGE_TAG" --output none
+            echo "$app now runs $image:$IMAGE_TAG"
+          done
+
+      - name: Smoke check
+        env:
+          WEB_URL: ${{ steps.apps.outputs.web_url }}
+          APPS: ${{ steps.apps.outputs.apps }}
+        run: |
+          # dev scales to zero, so the first requests also wake web and api up.
+          wait_for() {
+            local description=$1 url=$2 expected=$3 code
+            for _ in $(seq 1 30); do
+              code=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 30 "$url" || true)
+              if [ "$code" = "$expected" ]; then
+                echo "$description: HTTP $code"
+                return 0
+              fi
+              sleep 10
+            done
+            echo "::error::$description: expected HTTP $expected from $url, last answer $code"
+            return 1
+          }
+          wait_for "Dashboard sign-in page" "$WEB_URL/login" 200
+          # Unauthenticated, so the API itself must answer 401 through the dashboard's proxy (502 means it is unreachable).
+          wait_for "Dashboard to API" "$WEB_URL/api/proxy/tenders" 401
+
+          # Readiness probes call /health/ready (database included) on api and worker; wait for every revision to pass.
+          for app in $APPS; do
+            for attempt in $(seq 1 30); do
+              revision=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "$app" --query properties.latestRevisionName --output tsv)
+              health=$(az containerapp revision show --resource-group "$RESOURCE_GROUP" --name "$app" --revision "$revision" \
+                --query properties.healthState --output tsv)
+              if [ "$health" = "Healthy" ]; then
+                echo "$app ($revision): $health"
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "::error::$app ($revision) is $health"
+                exit 1
+              fi
+              sleep 10
+            done
+          done
+
+          {
+            echo "### TenderSync $TARGET"
+            echo "Deployed \`$IMAGE_TAG\` to $WEB_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

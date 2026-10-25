@@ -14,6 +14,8 @@ name: tendersync
 x-dotnet-environment: &dotnet-environment
   ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
   ConnectionStrings__TenderSync: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tendersync};Username=${POSTGRES_USER:-tendersync};Password=${POSTGRES_PASSWORD:-tendersync};Gss Encryption Mode=Disable
+  # Seq is a Development sink in appsettings; Compose adds it for every environment (Azure uses Application Insights).
+  Serilog__WriteTo__1__Name: Seq
   Serilog__WriteTo__1__Args__serverUrl: http://seq
   Jwt__SigningKey: ${Jwt__SigningKey:-}
   Seed__AdminEmail: ${Seed__AdminEmail:-}

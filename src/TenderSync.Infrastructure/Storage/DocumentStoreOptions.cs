@@ -29,8 +29,14 @@ public sealed class DocumentStoreOptions
 
     public sealed class AzureBlobOptions
     {
-        /// <summary>Connection string (Azurite locally, a Key Vault reference in Azure). Managed identity is a later addition.</summary>
+        /// <summary>Connection string (Azurite locally). Wins over <see cref="ServiceUri"/> when both are set.</summary>
         public string ConnectionString { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Blob endpoint (https://{account}.blob.core.windows.net) for managed identity: the store signs in with
+        /// DefaultAzureCredential (AZURE_CLIENT_ID picks the user-assigned identity in Container Apps), so no account key exists anywhere.
+        /// </summary>
+        public string ServiceUri { get; set; } = string.Empty;
 
         public string ContainerName { get; set; } = "documents";
     }
