@@ -7,11 +7,14 @@ import type { paths } from "@/lib/api/schema";
  */
 export const api = createClient<paths>({
   baseUrl: "/api/proxy",
-  fetch: (input: Request) => {
+  fetch: async (input: Request) => {
     // Rewrite {origin}/api/proxy/api/v1/... to {origin}/api/proxy/... : the proxy maps onto the API's /api/v1.
     const url = new URL(input.url);
     url.pathname = url.pathname.replace(/^\/api\/proxy\/api\/v1\//, "/api/proxy/");
-    return fetch(new Request(url, input));
+    // Buffer the body: copying the Request would send it as a stream, which Chrome only allows over HTTP/2
+    // (PATCH/POST failed with ERR_ALPN_NEGOTIATION_FAILED against the HTTP/1.1 dev server).
+    const body = input.method === "GET" || input.method === "HEAD" ? undefined : await input.arrayBuffer();
+    return fetch(url, { method: input.method, headers: input.headers, body, signal: input.signal, credentials: "same-origin" });
   },
 });
 

@@ -60,6 +60,7 @@ try
     app.MapAuthEndpoints();
     app.MapTenderEndpoints();
     app.MapDocumentEndpoints();
+    app.MapMatchEndpoints();
     app.MapInterestCategoryEndpoints();
     app.MapCompanyProfileEndpoints();
     app.MapNotificationEndpoints();

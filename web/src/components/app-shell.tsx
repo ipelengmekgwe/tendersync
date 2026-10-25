@@ -21,7 +21,7 @@ interface NavItem {
 /** Navigation (PLAN.md §11). Pages that later work packages deliver are listed, marked with the package that adds them. */
 const NAV: NavItem[] = [
   { href: "/", label: "Overview", icon: Gauge },
-  { href: "/matches", label: "Matches", icon: Inbox, soon: "WP13" },
+  { href: "/matches", label: "Matches", icon: Inbox },
   { href: "/tenders", label: "Tenders", icon: FileSearch },
   { href: "/company", label: "Company", icon: Building2, role: "Reviewer", soon: "WP14" },
   { href: "/settings", label: "Settings", icon: Settings, soon: "WP14" },

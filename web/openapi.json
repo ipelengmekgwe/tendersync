@@ -11,6 +11,26 @@
     }
   ],
   "paths": {
+    "/api/v1/overview": {
+      "get": {
+        "tags": [
+          "Overview"
+        ],
+        "summary": "Overview page data: new matches, matched tenders closing soon, pipeline status, model cost this month (Admin only) and expiring company documents.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "tags": [
@@ -300,6 +320,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TenderDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenders/{id}/history": {
+      "get": {
+        "tags": [
+          "Tenders"
+        ],
+        "summary": "Status transitions, releases seen and notifications sent for a tender.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenderHistoryDto"
                 }
               }
             }
@@ -736,6 +797,160 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestDocumentDownloadResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matches": {
+      "get": {
+        "tags": [
+          "Matches"
+        ],
+        "summary": "The matches inbox: matched tenders with workflow status, relevance, newest verdict and closing date, plus counts per status for the tabs.",
+        "parameters": [
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MatchStatus"
+            }
+          },
+          {
+            "name": "TenderId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "CompanyProfileId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ClosingWithinDays",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "ActiveOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "Sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MatchSort"
+            }
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchInboxDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matches/{id}": {
+      "patch": {
+        "tags": [
+          "Matches"
+        ],
+        "summary": "Changes a match's status and notes. Dismissing needs a dismiss reason. Records a decision only; nothing is submitted (ADR-015). Reviewer or Admin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
                 }
               }
             }
@@ -2468,6 +2683,38 @@
           }
         }
       },
+      "CostSummaryDto": {
+        "required": [
+          "monthStart",
+          "calls",
+          "costUsd",
+          "spentTodayUsd",
+          "dailyCapUsd"
+        ],
+        "type": "object",
+        "properties": {
+          "monthStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "calls": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "costUsd": {
+            "type": "number",
+            "format": "double"
+          },
+          "spentTodayUsd": {
+            "type": "number",
+            "format": "double"
+          },
+          "dailyCapUsd": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "DocumentPageTextDto": {
         "required": [
           "page",
@@ -2528,6 +2775,50 @@
             }
           }
         }
+      },
+      "ExpiringItemDto": {
+        "required": [
+          "kind",
+          "companyProfileId",
+          "companyName",
+          "documentId",
+          "name",
+          "expiresAt",
+          "expired"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ExpiringItemKind"
+          },
+          "companyProfileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "documentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expired": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ExpiringItemKind": {
+        "type": "integer"
       },
       "FindingOutcome": {
         "type": "integer"
@@ -2682,6 +2973,44 @@
             ]
           },
           "detailsJson": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "JobStatusDto": {
+        "required": [
+          "jobName",
+          "startedAt",
+          "finishedAt",
+          "success",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "jobName": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "success": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "error": {
             "type": [
               "null",
               "string"
@@ -2971,8 +3300,253 @@
           }
         }
       },
+      "MatchDto": {
+        "required": [
+          "id",
+          "tenderId",
+          "companyProfileId",
+          "relevance",
+          "status",
+          "notes",
+          "dismissReason",
+          "dismissedAt",
+          "notifiedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyProfileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "relevance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MatchStatus"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dismissReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dismissedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "notifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "MatchInboxDto": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount",
+          "counts"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchListItemDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchStatusCountDto"
+            }
+          }
+        }
+      },
+      "MatchListItemDto": {
+        "required": [
+          "id",
+          "tenderId",
+          "companyProfileId",
+          "companyName",
+          "bidNumber",
+          "title",
+          "buyerName",
+          "province",
+          "closingAt",
+          "tenderStatus",
+          "briefingAt",
+          "briefingCompulsory",
+          "relevance",
+          "status",
+          "notes",
+          "dismissReason",
+          "createdAt",
+          "updatedAt",
+          "verdict",
+          "score",
+          "qualifiedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyProfileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "bidNumber": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "buyerName": {
+            "type": "string"
+          },
+          "province": {
+            "$ref": "#/components/schemas/Province"
+          },
+          "closingAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "tenderStatus": {
+            "$ref": "#/components/schemas/TenderStatus"
+          },
+          "briefingAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "briefingCompulsory": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "relevance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MatchStatus"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dismissReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verdict": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QualificationVerdict"
+              }
+            ]
+          },
+          "score": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "qualifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "MatchSort": {
+        "type": "integer"
+      },
       "MatchStatus": {
         "type": "integer"
+      },
+      "MatchStatusCountDto": {
+        "required": [
+          "status",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/MatchStatus"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
       },
       "MissingItem": {
         "required": [
@@ -3173,6 +3747,69 @@
       "NotificationType": {
         "type": "integer"
       },
+      "OverviewDto": {
+        "required": [
+          "generatedAt",
+          "newMatchCount",
+          "newMatches",
+          "closingSoonDays",
+          "closingSoon",
+          "pipeline",
+          "cost",
+          "expiryWindowDays",
+          "expiring"
+        ],
+        "type": "object",
+        "properties": {
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "newMatchCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "newMatches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchListItemDto"
+            }
+          },
+          "closingSoonDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "closingSoon": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchListItemDto"
+            }
+          },
+          "pipeline": {
+            "$ref": "#/components/schemas/PipelineStatusDto"
+          },
+          "cost": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CostSummaryDto"
+              }
+            ]
+          },
+          "expiryWindowDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expiring": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpiringItemDto"
+            }
+          }
+        }
+      },
       "PagedResultOfAuditLogDto": {
         "required": [
           "items",
@@ -3302,6 +3939,36 @@
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "PipelineStatusDto": {
+        "required": [
+          "healthy",
+          "failedRunsLast24Hours",
+          "jobs",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "healthy": {
+            "type": "boolean"
+          },
+          "failedRunsLast24Hours": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "jobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobStatusDto"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceStatusDto"
+            }
           }
         }
       },
@@ -3848,6 +4515,42 @@
           }
         }
       },
+      "SourceStatusDto": {
+        "required": [
+          "source",
+          "checkedAt",
+          "ok",
+          "httpStatus",
+          "latencyMs"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "httpStatus": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "latencyMs": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "SubmissionMethod": {
         "type": "integer"
       },
@@ -4171,6 +4874,68 @@
           }
         }
       },
+      "TenderHistoryDto": {
+        "required": [
+          "tenderId",
+          "status",
+          "statusReason",
+          "firstSeenAt",
+          "lastSeenAt",
+          "lastCheckedAt",
+          "statusHistory",
+          "releases",
+          "notifications"
+        ],
+        "type": "object",
+        "properties": {
+          "tenderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenderStatus"
+          },
+          "statusReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "firstSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastCheckedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "statusHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenderStatusHistoryDto"
+            }
+          },
+          "releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenderReleaseDto"
+            }
+          },
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenderNotificationDto"
+            }
+          }
+        }
+      },
       "TenderListItemDto": {
         "required": [
           "id",
@@ -4259,6 +5024,77 @@
           "documentCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "TenderNotificationDto": {
+        "required": [
+          "id",
+          "type",
+          "channel",
+          "recipient",
+          "status",
+          "sentAt",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/NotificationType"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/NotificationChannel"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/NotificationStatus"
+          },
+          "sentAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TenderReleaseDto": {
+        "required": [
+          "id",
+          "releaseId",
+          "releaseDate",
+          "tag",
+          "seenAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "releaseId": {
+            "type": "string"
+          },
+          "releaseDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "seenAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -4477,6 +5313,38 @@
           }
         }
       },
+      "UpdateMatchRequest": {
+        "required": [
+          "status",
+          "notes",
+          "dismissReason"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MatchStatus"
+              }
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dismissReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "UserDto": {
         "required": [
           "id",
@@ -4521,6 +5389,9 @@
   ],
   "tags": [
     {
+      "name": "Overview"
+    },
+    {
       "name": "Auth"
     },
     {
@@ -4528,6 +5399,9 @@
     },
     {
       "name": "Documents"
+    },
+    {
+      "name": "Matches"
     },
     {
       "name": "Interest categories"

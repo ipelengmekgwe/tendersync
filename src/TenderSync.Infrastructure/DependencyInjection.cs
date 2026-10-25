@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IReadDb, DapperReadDb>();
         services.AddScoped<DatabaseSeeder>();
+        services.AddScoped<DemoDataSeeder>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddETenders(configuration);

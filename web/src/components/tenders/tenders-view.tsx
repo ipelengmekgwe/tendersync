@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api/client";
 import { Province, TenderSort, TenderStatus, type TenderSortValue } from "@/lib/enums";
-import { PAGE_SIZES, type TenderFilters, toApiQuery, toSearchParams } from "@/components/tenders/filters";
+import { CLOSING_WITHIN, type ClosingWithin, PAGE_SIZES, type TenderFilters, toApiQuery, toSearchParams } from "@/components/tenders/filters";
+import { SavedViewsMenu } from "@/components/tenders/saved-views-menu";
 import { TenderTable } from "@/components/tenders/tender-table";
 
 export function TendersView({ filters }: { filters: TenderFilters }) {
@@ -43,7 +44,7 @@ export function TendersView({ filters }: { filters: TenderFilters }) {
   return (
     <div className="space-y-4">
       <form
-        className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto] md:items-end"
+        className="grid gap-3 sm:grid-cols-2 md:grid-cols-[1fr_auto_auto_auto_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           apply({ q });
@@ -91,6 +92,22 @@ export function TendersView({ filters }: { filters: TenderFilters }) {
           </select>
         </div>
         <div className="space-y-1">
+          <Label htmlFor="closingWithin">Closing</Label>
+          <select
+            id="closingWithin"
+            className="h-9 rounded-md border bg-background px-2 text-sm"
+            value={filters.closingWithin ?? ""}
+            onChange={(e) => apply({ closingWithin: e.target.value === "" ? null : (Number(e.target.value) as ClosingWithin) })}
+          >
+            <option value="">Any time</option>
+            {CLOSING_WITHIN.map((days) => (
+              <option key={days} value={days}>
+                Within {days} days
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1">
           <Label htmlFor="sort">Sort</Label>
           <select
             id="sort"
@@ -107,6 +124,8 @@ export function TendersView({ filters }: { filters: TenderFilters }) {
         </div>
       </form>
 
+      <SavedViewsMenu currentQuery={toSearchParams({ ...filters, page: 1 }).toString()} />
+
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={filters.matchedOnly} onChange={(e) => apply({ matchedOnly: e.target.checked, nearMisses: false })} />
@@ -115,6 +134,7 @@ export function TendersView({ filters }: { filters: TenderFilters }) {
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={filters.nearMisses} onChange={(e) => apply({ nearMisses: e.target.checked, matchedOnly: false })} />
           Near misses
+          <span className="text-xs text-muted-foreground">(relevant, but below the match threshold)</span>
         </label>
         <span className="ml-auto text-muted-foreground" aria-live="polite">
           {query.isPending ? "Loading…" : `${total.toLocaleString("en-ZA")} tender${total === 1 ? "" : "s"}`}

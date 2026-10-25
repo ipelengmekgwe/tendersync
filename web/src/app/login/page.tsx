@@ -6,7 +6,7 @@ export const metadata = { title: "Sign in" };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">TenderSync</CardTitle>
@@ -16,6 +16,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <LoginForm next={next && next.startsWith("/") ? next : "/"} />
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

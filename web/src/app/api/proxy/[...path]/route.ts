@@ -10,7 +10,7 @@ import { config } from "@/lib/config";
  * retried; a failed refresh clears the cookies so the middleware sends the user back to /login.
  */
 const FORWARDED_REQUEST_HEADERS = ["content-type", "accept", "if-none-match", "range"];
-const FORWARDED_RESPONSE_HEADERS = ["content-type", "content-disposition", "content-length", "etag", "cache-control", "location"];
+const FORWARDED_RESPONSE_HEADERS = ["content-type", "content-disposition", "content-length", "content-range", "accept-ranges", "etag", "cache-control", "location"];
 
 async function forward(request: NextRequest, path: string[], accessToken: string | null, body: ArrayBuffer | null): Promise<Response> {
   const target = new URL(`${config.apiBaseUrl}/api/v1/${path.map(encodeURIComponent).join("/")}`);

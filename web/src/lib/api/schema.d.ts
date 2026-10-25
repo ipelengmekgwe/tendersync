@@ -4,6 +4,42 @@
  */
 
 export interface paths {
+    "/api/v1/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overview page data: new matches, matched tenders closing soon, pipeline status, model cost this month (Admin only) and expiring company documents. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OverviewDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -278,6 +314,53 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["TenderDetailDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenders/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status transitions, releases seen and notifications sent for a tender. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenderHistoryDto"];
                     };
                 };
                 /** @description Not Found */
@@ -753,6 +836,120 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The matches inbox: matched tenders with workflow status, relevance, newest verdict and closing date, plus counts per status for the tabs. */
+        get: {
+            parameters: {
+                query?: {
+                    Status?: components["schemas"]["MatchStatus"];
+                    TenderId?: string;
+                    CompanyProfileId?: string;
+                    ClosingWithinDays?: number;
+                    ActiveOnly?: boolean;
+                    Sort?: components["schemas"]["MatchSort"];
+                    Page?: number;
+                    PageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MatchInboxDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Changes a match's status and notes. Dismissing needs a dismiss reason. Records a decision only; nothing is submitted (ADR-015). Reviewer or Admin. */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateMatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MatchDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/interest-categories/test": {
@@ -1864,6 +2061,18 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        CostSummaryDto: {
+            /** Format: date-time */
+            monthStart: string;
+            /** Format: int32 */
+            calls: number;
+            /** Format: double */
+            costUsd: number;
+            /** Format: double */
+            spentTodayUsd: number;
+            /** Format: double */
+            dailyCapUsd: number;
+        };
         DocumentPageTextDto: {
             /** Format: int32 */
             page: number;
@@ -1883,6 +2092,19 @@ export interface components {
             charCount: number;
             pages: components["schemas"]["DocumentPageTextDto"][];
         };
+        ExpiringItemDto: {
+            kind: components["schemas"]["ExpiringItemKind"];
+            /** Format: uuid */
+            companyProfileId: string;
+            companyName: string;
+            /** Format: uuid */
+            documentId: null | string;
+            name: string;
+            /** Format: date-time */
+            expiresAt: string;
+            expired: boolean;
+        };
+        ExpiringItemKind: number;
         FindingOutcome: number;
         FunctionalityScore: {
             criterion: string;
@@ -1926,6 +2148,15 @@ export interface components {
             itemsProcessed: number;
             error: null | string;
             detailsJson: null | string;
+        };
+        JobStatusDto: {
+            jobName: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            finishedAt: null | string;
+            success: null | boolean;
+            error: null | string;
         };
         KeyPerson: {
             name: string;
@@ -2012,7 +2243,73 @@ export interface components {
         LogoutCommand: {
             refreshToken: string;
         };
+        MatchDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenderId: string;
+            /** Format: uuid */
+            companyProfileId: string;
+            /** Format: int32 */
+            relevance: number;
+            status: components["schemas"]["MatchStatus"];
+            notes: null | string;
+            dismissReason: null | string;
+            /** Format: date-time */
+            dismissedAt: null | string;
+            /** Format: date-time */
+            notifiedAt: null | string;
+        };
+        MatchInboxDto: {
+            items: components["schemas"]["MatchListItemDto"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            totalCount: number;
+            counts: components["schemas"]["MatchStatusCountDto"][];
+        };
+        MatchListItemDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenderId: string;
+            /** Format: uuid */
+            companyProfileId: string;
+            companyName: string;
+            bidNumber: string;
+            title: string;
+            buyerName: string;
+            province: components["schemas"]["Province"];
+            /** Format: date-time */
+            closingAt: null | string;
+            tenderStatus: components["schemas"]["TenderStatus"];
+            /** Format: date-time */
+            briefingAt: null | string;
+            briefingCompulsory: null | boolean;
+            /** Format: int32 */
+            relevance: number;
+            status: components["schemas"]["MatchStatus"];
+            notes: null | string;
+            dismissReason: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            verdict: null | components["schemas"]["QualificationVerdict"];
+            /** Format: int32 */
+            score: null | number;
+            /** Format: date-time */
+            qualifiedAt: null | string;
+        };
+        MatchSort: number;
         MatchStatus: number;
+        MatchStatusCountDto: {
+            status: components["schemas"]["MatchStatus"];
+            /** Format: int32 */
+            count: number;
+        };
         MissingItem: {
             name: string;
             formCode: null | string;
@@ -2063,6 +2360,21 @@ export interface components {
         };
         NotificationStatus: number;
         NotificationType: number;
+        OverviewDto: {
+            /** Format: date-time */
+            generatedAt: string;
+            /** Format: int32 */
+            newMatchCount: number;
+            newMatches: components["schemas"]["MatchListItemDto"][];
+            /** Format: int32 */
+            closingSoonDays: number;
+            closingSoon: components["schemas"]["MatchListItemDto"][];
+            pipeline: components["schemas"]["PipelineStatusDto"];
+            cost: null | components["schemas"]["CostSummaryDto"];
+            /** Format: int32 */
+            expiryWindowDays: number;
+            expiring: components["schemas"]["ExpiringItemDto"][];
+        };
         PagedResultOfAuditLogDto: {
             items: components["schemas"]["AuditLogDto"][];
             /** Format: int32 */
@@ -2106,6 +2418,13 @@ export interface components {
             totalCount: number;
             /** Format: int32 */
             totalPages?: number;
+        };
+        PipelineStatusDto: {
+            healthy: boolean;
+            /** Format: int32 */
+            failedRunsLast24Hours: number;
+            jobs: components["schemas"]["JobStatusDto"][];
+            sources: components["schemas"]["SourceStatusDto"][];
         };
         PrefilterResult: {
             isCandidate: boolean;
@@ -2251,6 +2570,16 @@ export interface components {
             schemaDriftJson: null | string;
             error: null | string;
         };
+        SourceStatusDto: {
+            source: string;
+            /** Format: date-time */
+            checkedAt: string;
+            ok: boolean;
+            /** Format: int32 */
+            httpStatus: null | number;
+            /** Format: int32 */
+            latencyMs: null | number;
+        };
         SubmissionMethod: number;
         TenderClassificationDto: {
             stage: components["schemas"]["ClassificationStage"];
@@ -2326,6 +2655,21 @@ export interface components {
             error: null | string;
             stored?: boolean;
         };
+        TenderHistoryDto: {
+            /** Format: uuid */
+            tenderId: string;
+            status: components["schemas"]["TenderStatus"];
+            statusReason: null | string;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            /** Format: date-time */
+            lastCheckedAt: null | string;
+            statusHistory: components["schemas"]["TenderStatusHistoryDto"][];
+            releases: components["schemas"]["TenderReleaseDto"][];
+            notifications: components["schemas"]["TenderNotificationDto"][];
+        };
         TenderListItemDto: {
             /** Format: uuid */
             id: string;
@@ -2347,6 +2691,28 @@ export interface components {
             matchStatus: null | components["schemas"]["MatchStatus"];
             /** Format: int32 */
             documentCount: number;
+        };
+        TenderNotificationDto: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["NotificationType"];
+            channel: components["schemas"]["NotificationChannel"];
+            recipient: string;
+            status: components["schemas"]["NotificationStatus"];
+            /** Format: date-time */
+            sentAt: null | string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        TenderReleaseDto: {
+            /** Format: uuid */
+            id: string;
+            releaseId: string;
+            /** Format: date-time */
+            releaseDate: string;
+            tag: string;
+            /** Format: date-time */
+            seenAt: string;
         };
         TenderRequirementsDto: {
             /** Format: uuid */
@@ -2397,6 +2763,11 @@ export interface components {
             title: string;
             /** Format: date-time */
             expiresAt: null | string;
+        };
+        UpdateMatchRequest: {
+            status: null | components["schemas"]["MatchStatus"];
+            notes: null | string;
+            dismissReason: null | string;
         };
         UserDto: {
             /** Format: uuid */
