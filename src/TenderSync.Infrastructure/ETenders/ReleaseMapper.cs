@@ -43,7 +43,7 @@ public sealed class ReleaseMapper(IOptions<ETendersOptions> options)
             ValueCurrency: Clean(tender.Value?.Currency),
             PublishedAt: ParseDate(tender.TenderPeriod?.StartDate) ?? ParseDate(release.Date) ?? DateTimeOffset.UnixEpoch,
             ClosingAt: ParseDate(tender.TenderPeriod?.EndDate),
-            SourceUrl: string.Format(CultureInfo.InvariantCulture, _options.TenderDetailsUrlFormat, tenderId),
+            SourceUrl: string.Format(CultureInfo.InvariantCulture, _options.TenderDetailsUrlFormat, Uri.EscapeDataString(tenderId)),
             ReleaseId: string.IsNullOrWhiteSpace(release.Id) ? $"{ocid}-{release.Date}" : release.Id,
             ReleaseDate: ParseDate(release.Date) ?? DateTimeOffset.UnixEpoch,
             ReleaseTag: release.Tag.Count == 0 ? "unknown" : string.Join(",", release.Tag),

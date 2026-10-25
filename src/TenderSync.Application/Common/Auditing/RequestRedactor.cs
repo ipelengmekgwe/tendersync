@@ -13,7 +13,7 @@ namespace TenderSync.Application.Common.Auditing;
 public static class RequestRedactor
 {
     public const string Redacted = "***";
-    private const int MaxDepth = 3;
+    private const int MaxDepth = 6;
 
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> Cache = new();
 
@@ -25,9 +25,9 @@ public static class RequestRedactor
 
     private static object? Redact(object? value, int depth)
     {
-        if (value is null || depth >= MaxDepth)
+        if (value is null)
         {
-            return value;
+            return null;
         }
 
         var type = value.GetType();
@@ -39,6 +39,13 @@ public static class RequestRedactor
         if (type.IsPrimitive || type.IsEnum || value is string || value is decimal || value is DateTimeOffset || value is DateTime || value is Guid || value is TimeSpan || value is System.Collections.IDictionary)
         {
             return value;
+        }
+
+        // Fail closed: an object nested deeper than the walk goes could hide a [Sensitive] property, and serialising it
+        // as-is would print that property in full.
+        if (depth >= MaxDepth)
+        {
+            return Redacted;
         }
 
         if (value is System.Collections.IEnumerable items)

@@ -3,3 +3,4 @@
 🚨 <b>Pipeline failure</b> · etenders
 3 consecutive failures. Last error: HTTP 500 from /api/OCDSReleases
 Saturday 24 October 2026
+<i>Generated automatically. Verify against the source documents before acting.</i>

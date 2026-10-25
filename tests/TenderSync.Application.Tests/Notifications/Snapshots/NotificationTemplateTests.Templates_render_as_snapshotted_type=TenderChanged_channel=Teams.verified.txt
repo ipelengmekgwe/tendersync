@@ -10,3 +10,4 @@ Relevance: 82/100
 Can we bid? Partial: open questions (score 64/100)
 Missing: B-BBEE certificate; SBD 6.1: Preference points claim form; ISO 27001 certificate
 [Source on eTenders](https://www.etenders.gov.za/Home/TenderDetails?Id=175445)
+_Generated automatically. Verify against the source documents before acting._
