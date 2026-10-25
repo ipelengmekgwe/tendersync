@@ -24,6 +24,12 @@ public sealed class LlmOptions
     /// <summary>PLAN.md §8.4: company documents may be sent to the provider. Default true for Anthropic; set false for unknown OpenAI-compatible endpoints.</summary>
     public bool AllowCompanyDocuments { get; set; } = true;
 
+    /// <summary>
+    /// Purpose → JSON answer the fake provider returns, so a local stack can run a purpose without a key (route it with
+    /// Llm:Routing:{purpose} = fake). Meant for Development and e2e runs; every call returns the same answer.
+    /// </summary>
+    public Dictionary<string, string> FakeAnswers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Folder for RecordingLlmClient fixtures. Empty disables recording.</summary>
     public string RecordingPath { get; set; } = string.Empty;
 

@@ -5,7 +5,7 @@ using TenderSync.Worker.Jobs;
 namespace TenderSync.Worker.Infrastructure;
 
 /// <summary>Implements the Application scheduler port over Hangfire; the [Queue] attribute on each job class routes it to the pipeline queue.</summary>
-internal sealed class HangfirePipelineScheduler(IBackgroundJobClient jobs) : IPipelineScheduler
+internal sealed class HangfirePipelineScheduler(IBackgroundJobClient jobs, IRecurringJobManager recurring) : IPipelineScheduler
 {
     public void EnqueueDocumentDownload(Guid tenderId) =>
         jobs.Enqueue<DownloadTenderDocumentsJob>(job => job.ExecuteAsync(tenderId, CancellationToken.None));
@@ -24,4 +24,6 @@ internal sealed class HangfirePipelineScheduler(IBackgroundJobClient jobs) : IPi
 
     public void EnqueueNotificationSend(Guid notificationId) =>
         jobs.Enqueue<SendNotificationJob>(job => job.ExecuteAsync(notificationId, CancellationToken.None));
+
+    public void TriggerRecurringJob(string jobId) => recurring.Trigger(jobId);
 }

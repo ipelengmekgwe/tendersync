@@ -23,4 +23,7 @@ public interface IPipelineScheduler
 
     /// <summary>Queues <c>SendNotificationJob</c> (PLAN.md §13, notify queue) for one notification row.</summary>
     void EnqueueNotificationSend(Guid notificationId);
+
+    /// <summary>Runs a registered recurring job now, outside its schedule (admin "run now").</summary>
+    void TriggerRecurringJob(string jobId);
 }
