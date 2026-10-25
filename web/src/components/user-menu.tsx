@@ -35,10 +35,11 @@ export function UserMenu({ user }: { user: User }) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" aria-label="Account menu" />}>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" />}>
         <Avatar className="size-8">
           <AvatarFallback>{initials || "?"}</AvatarFallback>
         </Avatar>
+        <span className="sr-only">Account menu for {user.displayName}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuGroup>

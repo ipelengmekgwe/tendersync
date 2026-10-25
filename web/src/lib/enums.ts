@@ -61,3 +61,126 @@ export function tenderStatusTone(status: number): "default" | "secondary" | "des
       return "outline";
   }
 }
+
+export const QualificationVerdict = { 0: "Unknown", 1: "Qualify", 2: "Partial", 3: "Does not qualify" } as const;
+export type QualificationVerdictValue = keyof typeof QualificationVerdict;
+
+export const FindingOutcome = { 0: "Unknown", 1: "Pass", 2: "Fail", 3: "Expired" } as const;
+
+export const RequirementKind = {
+  0: "Mandatory",
+  1: "Functional",
+  2: "Pricing",
+  3: "Document",
+  4: "Briefing",
+  5: "Submission",
+  6: "Evaluation",
+  7: "Contract",
+  8: "Other",
+} as const;
+
+export const RequirementType = {
+  0: "Other",
+  1: "CSD registration",
+  2: "Tax compliance",
+  3: "B-BBEE certificate",
+  4: "CIDB grade",
+  5: "Company registration",
+  6: "Insurance",
+  7: "Years in business",
+  8: "Minimum turnover",
+  9: "References",
+  10: "Certification",
+  11: "Accreditation",
+  12: "Local content",
+  13: "JV / subcontracting",
+} as const;
+
+export const DocumentStatus = { 0: "Pending", 1: "Downloaded", 2: "Failed", 3: "Skipped", 4: "Extracted" } as const;
+
+export const BuyerType = { 0: "Unknown", 1: "National", 2: "Provincial", 3: "Municipal", 4: "State-owned entity", 5: "Other" } as const;
+
+export const SubmissionMethod = { 0: "Not stated", 1: "eTenders online", 2: "Physical", 3: "Email", 4: "Other" } as const;
+
+export const ClassificationStage = { 0: "Not classified", 1: "Keyword", 2: "Model" } as const;
+
+export const NotificationType = {
+  0: "New match",
+  1: "Qualification ready",
+  2: "Closing in 7 days",
+  3: "Closing in 3 days",
+  4: "Closing tomorrow",
+  5: "Briefing reminder",
+  6: "Tender changed",
+  7: "Award published",
+  8: "Pipeline failure",
+  9: "Document expiring",
+  10: "Daily digest",
+  11: "Test",
+} as const;
+
+export const NotificationChannel = { 0: "Email", 1: "Telegram", 2: "Teams", 3: "SMS", 4: "WhatsApp" } as const;
+
+export const NotificationStatus = { 0: "Pending", 1: "Sent", 2: "Failed", 3: "Skipped" } as const;
+
+export const ExpiringItemKind = { 0: "Document", 1: "CSD registration", 2: "Tax PIN", 3: "B-BBEE certificate" } as const;
+
+export const MatchSort = { 0: "Closing soonest", 1: "Most relevant", 2: "Newest first" } as const;
+export type MatchSortValue = keyof typeof MatchSort;
+
+type Tone = "default" | "secondary" | "destructive" | "outline";
+
+/** Qualify reads as good news, Partial as "look closer", Does not qualify as a stop. */
+export function verdictTone(verdict: number | null | undefined): Tone {
+  switch (verdict) {
+    case 1:
+      return "default";
+    case 2:
+      return "secondary";
+    case 3:
+      return "destructive";
+    default:
+      return "outline";
+  }
+}
+
+export function findingTone(outcome: number): Tone {
+  switch (outcome) {
+    case 1:
+      return "default";
+    case 2:
+    case 3:
+      return "destructive";
+    default:
+      return "outline";
+  }
+}
+
+export function matchStatusTone(status: number): Tone {
+  switch (status) {
+    case 0:
+      return "default";
+    case 1:
+    case 3:
+      return "secondary";
+    case 2:
+    case 6:
+    case 7:
+      return "outline";
+    default:
+      return "secondary";
+  }
+}
+
+export function documentStatusTone(status: number): Tone {
+  switch (status) {
+    case 4:
+      return "default";
+    case 1:
+      return "secondary";
+    case 2:
+      return "destructive";
+    default:
+      return "outline";
+  }
+}

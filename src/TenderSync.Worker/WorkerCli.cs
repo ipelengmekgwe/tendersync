@@ -22,7 +22,8 @@ namespace TenderSync.Worker;
 /// <c>--migrate-seed</c> applies migrations and reference-data seeding (the production migration job, PLAN.md §15);
 /// <c>--extract ocid[,ocid...] [--extraction-template docs/golden/extraction]</c> extracts requirements (WP08) and writes review templates;
 /// <c>--qualify ocid[,ocid...] [--qualify-report dir]</c> runs the qualification engine (WP09) and optionally writes each report's markdown;
-/// <c>--refresh-active</c>, <c>--compute-status</c> and <c>--reminders</c> run the WP11 status refresh, status derivation and the three reminder passes.
+/// <c>--refresh-active</c>, <c>--compute-status</c> and <c>--reminders</c> run the WP11 status refresh, status derivation and the three reminder passes;
+/// <c>--seed-demo</c> writes the demo tender, PDF and match the dashboard e2e test uses (Development only, see <see cref="DemoDataSeeder"/>).
 /// The Hangfire server is not started in these modes.
 /// </summary>
 public sealed record WorkerCli(
@@ -42,9 +43,10 @@ public sealed record WorkerCli(
     string? QualifyReportPath,
     bool RefreshActive,
     bool ComputeStatus,
-    bool Reminders)
+    bool Reminders,
+    bool SeedDemo = false)
 {
-    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed || ExtractOcids.Count > 0 || QualifyOcids.Count > 0 || RefreshActive || ComputeStatus || Reminders;
+    public bool IsOneShot => IngestDays is not null || BackfillDays is not null || Probe || DownloadDocumentsFor.Count > 0 || ClassifyDays is not null || ClassifyOcids.Count > 0 || GoldenSetPath is not null || MigrateAndSeed || ExtractOcids.Count > 0 || QualifyOcids.Count > 0 || RefreshActive || ComputeStatus || Reminders || SeedDemo;
 
     public static WorkerCli Parse(string[] args)
     {
@@ -60,7 +62,7 @@ public sealed record WorkerCli(
         string? extractionTemplate = null;
         var qualify = new List<string>();
         string? qualifyReport = null;
-        bool refreshActive = false, computeStatus = false, reminders = false;
+        bool refreshActive = false, computeStatus = false, reminders = false, seedDemo = false;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -128,10 +130,13 @@ public sealed record WorkerCli(
                 case "--reminders":
                     reminders = true;
                     break;
+                case "--seed-demo":
+                    seedDemo = true;
+                    break;
             }
         }
 
-        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed, extract, extractionTemplate, qualify, qualifyReport, refreshActive, computeStatus, reminders);
+        return new WorkerCli(ingest, backfill, probe, ocids, classifyDays, classify, prefilterOnly, golden, goldenDays, migrateSeed, extract, extractionTemplate, qualify, qualifyReport, refreshActive, computeStatus, reminders, seedDemo);
     }
 
     public async Task RunAsync(IServiceProvider services, CancellationToken cancellationToken)
@@ -143,6 +148,20 @@ public sealed record WorkerCli(
             // PLAN.md §15: production runs migrations from a one-shot job rather than on API start.
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync(cancellationToken);
             await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync(cancellationToken);
+        }
+
+        if (SeedDemo)
+        {
+            var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+            if (!environment.IsDevelopment())
+            {
+                throw new InvalidOperationException($"--seed-demo writes demo data and only runs in Development (this is {environment.EnvironmentName}).");
+            }
+
+            var demo = await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync(cancellationToken);
+            scope.ServiceProvider.GetRequiredService<ILogger<WorkerCli>>().LogInformation(
+                "Demo tender {BidNumber}: /tenders/{TenderId} (match {MatchId}, profile {ProfileId}{Created})",
+                DemoDataSeeder.DemoBidNumber, demo.TenderId, demo.MatchId, demo.CompanyProfileId, demo.ProfileCreated ? ", created" : string.Empty);
         }
 
         if (Probe)
