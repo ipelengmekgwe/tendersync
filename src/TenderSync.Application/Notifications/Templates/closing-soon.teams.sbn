@@ -8,3 +8,4 @@ Closing: {{ Closing }}{{ if ClosingIn != "" }} ({{ ClosingIn }}){{ end }}
 {{ end }}Can we bid? {{ Verdict }}{{ if Score }} (score {{ Score }}/100){{ end }}
 {{ if MissingItems.size > 0 }}Missing: {{ for item in MissingItems }}{{ item }}{{ if !for.last }}; {{ end }}{{ end }}
 {{ end }}[Source on eTenders]({{ SourceUrl }})
+_Generated automatically. Verify against the source documents before acting._

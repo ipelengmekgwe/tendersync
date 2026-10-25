@@ -1,6 +1,7 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import createClient from "openapi-fetch";
 import type { paths } from "@/lib/api/schema";
+import { forwardedHeaders } from "@/lib/api/forwarded";
 import { ACCESS_COOKIE } from "@/lib/auth/cookies";
 import { config } from "@/lib/config";
 
@@ -13,7 +14,7 @@ export async function serverApi() {
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;
   return createClient<paths>({
     baseUrl: config.apiBaseUrl,
-    headers: token ? { authorization: `Bearer ${token}` } : {},
+    headers: { ...forwardedHeaders(await headers()), ...(token ? { authorization: `Bearer ${token}` } : {}) },
     cache: "no-store",
   });
 }

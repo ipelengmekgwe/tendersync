@@ -2,3 +2,4 @@ TenderSync test message
 ✅ <b>TenderSync test</b>
 {{ Message | html.escape }}
 If you can read this, the channel works.
+<i>Generated automatically. Verify against the source documents before acting.</i>

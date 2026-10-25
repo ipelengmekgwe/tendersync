@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { REFRESH_COOKIE } from "@/lib/auth/cookies";
+import { safeNextPath } from "@/lib/auth/redirect";
 
 /**
  * Pages need a session cookie; /login and the auth route handlers do not. The proxy enforces auth itself (the API
@@ -13,7 +14,7 @@ export function middleware(request: NextRequest): NextResponse {
   const signedIn = Boolean(request.cookies.get(REFRESH_COOKIE)?.value);
 
   if (pathname === "/login" && signedIn) {
-    return NextResponse.redirect(new URL(request.nextUrl.searchParams.get("next") ?? "/", request.url));
+    return NextResponse.redirect(new URL(safeNextPath(request.nextUrl.searchParams.get("next")), request.url));
   }
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/")) || pathname.startsWith("/api/proxy")) {
     return NextResponse.next();

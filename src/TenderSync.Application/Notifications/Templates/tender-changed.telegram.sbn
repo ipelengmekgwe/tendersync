@@ -8,4 +8,5 @@ Closing: {{ Closing }}{{ if ClosingIn != "" }} ({{ ClosingIn }}){{ end }}
 {{ end }}{{ if Relevance }}Relevance: {{ Relevance }}/100
 {{ end }}Can we bid? {{ Verdict | html.escape }}{{ if Score }} (score {{ Score }}/100){{ end }}
 {{ if MissingItems.size > 0 }}Missing: {{ for item in MissingItems }}{{ item | html.escape }}{{ if !for.last }}; {{ end }}{{ end }}
-{{ end }}<a href="{{ SourceUrl }}">Source on eTenders</a>
+{{ end }}<a href="{{ SourceUrl | html.escape }}">Source on eTenders</a>
+<i>Generated automatically. Verify against the source documents before acting.</i>

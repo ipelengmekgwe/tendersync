@@ -24,7 +24,9 @@ public static class NotificationServiceExtensions
 
         foreach (var name in new[] { TelegramChannel.ClientName, TeamsChannel.ClientName, ClickatellSmsSender.ClientName })
         {
-            services.AddHttpClient(name, client => client.Timeout = TimeSpan.FromSeconds(30)).AddStandardResilienceHandler();
+            // No HttpClientFactory request logging: the Telegram token sits in the URL path and webhook URLs are secrets,
+            // and the default "Start processing HTTP request POST {uri}" line would write them to every sink.
+            services.AddHttpClient(name, client => client.Timeout = TimeSpan.FromSeconds(30)).RemoveAllLoggers().AddStandardResilienceHandler();
         }
 
         services.AddSingleton<ISmsSender>(provider =>
