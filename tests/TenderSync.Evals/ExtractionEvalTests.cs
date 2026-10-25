@@ -51,7 +51,7 @@ public class ExtractionEvalTests(ITestOutputHelper output)
 
         scores.Should().NotBeEmpty();
         var average = scores.Average();
-        output.WriteLine($"Field accuracy over {scores.Count} tender(s): {average:P1}");
+        EvalReport.Line(output, $"- Requirement extraction: field accuracy over {scores.Count} tender(s) {average:P1}");
         average.Should().BeGreaterThanOrEqualTo(0.80);
     }
 }

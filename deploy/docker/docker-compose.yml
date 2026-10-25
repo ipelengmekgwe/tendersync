@@ -76,7 +76,7 @@ services:
       context: ../..
       dockerfile: deploy/docker/dotnet.Dockerfile
       target: migrate
-    image: tendersync-migrate:${TENDERSYNC_TAG:-local}
+    image: ${TENDERSYNC_REGISTRY:-}tendersync-migrate:${TENDERSYNC_TAG:-local}
     restart: "no"
     env_file:
       - path: .env
@@ -92,7 +92,7 @@ services:
       context: ../..
       dockerfile: deploy/docker/dotnet.Dockerfile
       target: api
-    image: tendersync-api:${TENDERSYNC_TAG:-local}
+    image: ${TENDERSYNC_REGISTRY:-}tendersync-api:${TENDERSYNC_TAG:-local}
     environment:
       <<: *dotnet-environment
       Cors__AllowedOrigins__0: ${PUBLIC_WEB_URL:-http://localhost:3000}
@@ -105,7 +105,7 @@ services:
       context: ../..
       dockerfile: deploy/docker/dotnet.Dockerfile
       target: worker
-    image: tendersync-worker:${TENDERSYNC_TAG:-local}
+    image: ${TENDERSYNC_REGISTRY:-}tendersync-worker:${TENDERSYNC_TAG:-local}
     environment:
       <<: *dotnet-environment
       # Fetch tenders as soon as the Worker starts instead of at the next half hour. Empty turns it off.
@@ -116,7 +116,7 @@ services:
   web:
     build:
       context: ../../web
-    image: tendersync-web:${TENDERSYNC_TAG:-local}
+    image: ${TENDERSYNC_REGISTRY:-}tendersync-web:${TENDERSYNC_TAG:-local}
     restart: unless-stopped
     environment:
       API_BASE_URL: http://api:8080

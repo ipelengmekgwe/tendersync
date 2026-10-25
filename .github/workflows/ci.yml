@@ -1,5 +1,9 @@
 name: CI
 
+# Every pull request and every push to main (PLAN.md §15): .NET build and tests with coverage, the dashboard's lint,
+# type-check, unit tests with coverage and production build, and a dependency vulnerability scan for both. The job
+# names are the required status checks for branch protection (docs/runbooks/github.md).
+
 on:
   push:
     branches: [main]
@@ -8,47 +12,81 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   dotnet:
     name: Build and test (.NET)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore TenderSync.slnx
+        run: |
+          dotnet restore TenderSync.slnx
+          dotnet tool restore
+
+      - name: Vulnerable packages
+        # Fails on any known-vulnerable NuGet package, direct or transitive.
+        run: |
+          dotnet list TenderSync.slnx package --vulnerable --include-transitive --no-restore 2>&1 | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then
+            echo "::error::Vulnerable NuGet packages found; see the step log."
+            exit 1
+          fi
 
       - name: Build
         run: dotnet build TenderSync.slnx --no-restore --configuration Release
 
       - name: Test
+        # Integration tests start PostgreSQL through Testcontainers on the runner's Docker.
         run: >-
           dotnet test TenderSync.slnx --no-build --configuration Release
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
           --results-directory TestResults
 
-      - name: Upload test results
+      - name: Coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        run: >-
+          dotnet reportgenerator
+          -reports:"TestResults/**/coverage.cobertura.xml"
+          -targetdir:coverage
+          -reporttypes:"MarkdownSummaryGithub;Cobertura;HtmlInline"
+          -assemblyfilters:"+TenderSync.*;-*.Tests;-TenderSync.Evals"
+          -filefilters:"-*.g.cs;-*/Migrations/*"
+          -verbosity:Warning
+          && cat coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test results and coverage
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          name: test-results
-          path: TestResults
+          name: dotnet-test-results
+          path: |
+            TestResults
+            coverage
+          if-no-files-found: ignore
+          retention-days: 14
 
   web:
     name: Build and test (web)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -57,14 +95,31 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund --legacy-peer-deps
 
+      - name: Vulnerable packages
+        # Production dependencies only; high and critical advisories fail the build.
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Lint
         run: npm run lint
 
       - name: Type-check
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm run test
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+
+      - name: Coverage summary
+        if: always()
+        run: node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build
         run: npm run build
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-coverage
+          path: web/coverage
+          if-no-files-found: ignore
+          retention-days: 14

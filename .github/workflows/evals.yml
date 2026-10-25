@@ -1,0 +1,70 @@
+name: Evals
+
+# Nightly model evals (PLAN.md §14, §15): the live smoke test and the classification precision/recall run against
+# docs/golden/classification.jsonl. Model calls stop once TENDERSYNC_EVALS_MAX_USD is spent (default $2 a night;
+# set another cap when running by hand). Results go to the run's summary page. Needs the ANTHROPIC_API_KEY repository
+# secret; without it the run is skipped with a note. The extraction eval needs a database with extracted tenders and
+# is run locally (docs/golden/extraction/README.md).
+
+on:
+  schedule:
+    - cron: "30 1 * * *" # 03:30 SAST
+  workflow_dispatch:
+    inputs:
+      max_usd:
+        description: Dollar cap for model calls in this run
+        required: false
+        default: "2"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals
+  cancel-in-progress: false
+
+jobs:
+  evals:
+    name: Model evals
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TENDERSYNC_EVALS: "1"
+      TENDERSYNC_EVALS_MAX_USD: ${{ inputs.max_usd || '2' }}
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+    steps:
+      - name: Key check
+        if: env.HAS_KEY != 'true'
+        run: |
+          echo "::notice::ANTHROPIC_API_KEY is not set as a repository secret; evals skipped."
+          echo "Evals skipped: add the ANTHROPIC_API_KEY repository secret to run them." >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v7
+        if: env.HAS_KEY == 'true'
+
+      - uses: actions/setup-dotnet@v6
+        if: env.HAS_KEY == 'true'
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        if: env.HAS_KEY == 'true'
+        run: dotnet build tests/TenderSync.Evals --configuration Release
+
+      - name: Run evals
+        if: env.HAS_KEY == 'true'
+        env:
+          Llm__Anthropic__ApiKey: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "## Model evals (cap \$${TENDERSYNC_EVALS_MAX_USD})" >> "$GITHUB_STEP_SUMMARY"
+          dotnet test tests/TenderSync.Evals --no-build --configuration Release \
+            --logger "trx;LogFileName=evals.trx" --logger "console;verbosity=normal" --results-directory EvalResults
+
+      - name: Upload results
+        if: always() && env.HAS_KEY == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-results
+          path: EvalResults
+          if-no-files-found: ignore
+          retention-days: 30

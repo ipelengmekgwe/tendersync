@@ -1,16 +1,62 @@
+# Dependency updates (WP16). Weekly, minor and patch updates grouped per ecosystem to keep the PR count low, and a
+# one-week cooldown so a freshly published (possibly compromised or broken) release is not proposed straight away.
+# Security updates are not affected by the grouping or the cooldown.
 version: 2
 updates:
   - package-ecosystem: nuget
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      nuget-minor-and-patch:
+        update-types: [minor, patch]
     ignore:
       # Licence pins, see docs/adr/0019-package-versions.md
       - dependency-name: MediatR
         update-types: ["version-update:semver-major"]
       - dependency-name: FluentAssertions
         update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      web-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # The dashboard is on Next.js 15 (PLAN.md §11); moving to 16 is a planned upgrade, not a weekly bump.
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint-config-next
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories:
+      - /deploy/docker
+      - /web
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: docker-compose
+    directory: /deploy/docker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
