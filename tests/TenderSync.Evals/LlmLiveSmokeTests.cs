@@ -43,6 +43,8 @@ public class LlmLiveSmokeTests
             prompt.Tier, LlmEffort.Low, 1024, EnableCitations: true);
 
         var result = await client.CompleteAsync<SmokeSummary>(request);
+        EvalBudget.Record(result.CostUsd);
+        EvalReport.Summary($"- Live smoke test: {result.Model}, {result.Usage.InputTokens} tokens in, {result.Usage.OutputTokens} out, ${result.CostUsd:F4}");
 
         result.Value.Summary.Should().NotBeNullOrWhiteSpace();
         result.Value.BidNumber.Should().Contain("WCGHCC0038");

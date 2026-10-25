@@ -38,7 +38,7 @@ public class ClassificationEvalTests(ITestOutputHelper output)
         var prefilter = new KeywordPrefilter(Options.Create(new ClassificationOptions()));
         var pairs = rows.Select(r => (prefilter.Evaluate(r.ToText(), Categories).IsCandidate, r.IsItMatch!.Value)).ToList();
         var metrics = EvalMetrics.From(pairs);
-        output.WriteLine($"Stage 1 (keyword prefilter): {metrics}");
+        EvalReport.Line(output, $"- Classification stage 1 (keyword prefilter): {metrics}");
         foreach (var missed in rows.Where((r, i) => !pairs[i].Item1 && pairs[i].Item2))
         {
             output.WriteLine($"  missed: {missed.Ocid} {missed.Title}");
@@ -66,16 +66,24 @@ public class ClassificationEvalTests(ITestOutputHelper output)
 
         var pairs = new List<(bool Predicted, bool Actual)>();
         decimal cost = 0m;
+        var stoppedAt = (int?)null;
         foreach (var row in rows)
         {
             var text = row.ToText();
             var predicted = false;
             if (prefilter.Evaluate(text, Categories).IsCandidate)
             {
+                if (!EvalBudget.CanSpend())
+                {
+                    stoppedAt = pairs.Count;
+                    break;
+                }
+
                 var result = await client.CompleteAsync<ClassificationAnswer>(new LlmRequest(
                     "classify", prompt.VersionTag, prompt.Body, [new LlmTextPart(TenderClassifier.BuildUserText(text, Categories, settings))], prompt.Tier, LlmEffort.Low, 1024));
                 predicted = result.Value.Relevance >= settings.MatchThreshold;
                 cost += result.CostUsd;
+                EvalBudget.Record(result.CostUsd);
                 if (predicted != row.IsItMatch)
                 {
                     output.WriteLine($"  {(predicted ? "false positive" : "false negative")}: {row.Ocid} relevance {result.Value.Relevance} — {row.Title}");
@@ -90,7 +98,14 @@ public class ClassificationEvalTests(ITestOutputHelper output)
         }
 
         var metrics = EvalMetrics.From(pairs);
-        output.WriteLine($"Stage 2 (model): {metrics}, cost ${cost:F4}");
+        EvalReport.Line(output, $"- Classification stage 2 (model): {metrics}, cost ${cost:F4} of the ${EvalBudget.MaxUsd:F2} run budget");
+        if (stoppedAt is { } evaluated)
+        {
+            // Partial results are not comparable with the targets; report them and leave the run green but visibly short.
+            EvalReport.Line(output, $"- ⚠ Budget reached after {evaluated} of {rows.Count} rows ({EvalBudget.Variable}); targets not checked.");
+            return;
+        }
+
         metrics.Recall.Should().BeGreaterThanOrEqualTo(0.90);
         metrics.Precision.Should().BeGreaterThanOrEqualTo(0.70);
     }
