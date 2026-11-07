@@ -21,6 +21,7 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.HasIndex(n => new { n.Status, n.CreatedAt });
         builder.HasIndex(n => new { n.Status, n.NotBefore });
         builder.HasIndex(n => n.TenderId);
+        builder.HasIndex(n => new { n.RecipientUserId, n.CreatedAt });
     }
 }
 

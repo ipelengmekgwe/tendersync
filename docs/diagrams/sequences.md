@@ -133,7 +133,8 @@ sequenceDiagram
 
   XT->>DB: CompositeTextExtractor pages → document_texts
   XT->>DB: TenderDocument.MarkExtracted → raises DocumentTextExtracted
-  OB->>OB: ExtractWhenDocumentsAreReady: tender matched and no document still Pending or Downloaded
+  Note over XT,DB: a failed or skipped document raises DocumentNotExtracted instead
+  OB->>OB: ExtractWhenDocumentsAreReady (either event): tender matched, no document still Pending or Downloaded, at least one with text
   OB->>RJ: enqueue (POST /tenders/{id}/extract → TenderExtractionRequested takes the same path)
   RJ->>RE: ExtractAsync
   RE->>DB: documents in order: main bid document first

@@ -48,6 +48,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["Seed:AdminEmail"] = AdminEmail,
             ["Seed:AdminPassword"] = AdminPassword,
             ["RateLimiting:Auth:PermitLimit"] = "1000",
+            ["RateLimiting:TestSend:PermitLimit"] = "1000",
             ["Serilog:WriteTo:1:Name"] = "Console",
             ["Serilog:MinimumLevel:Default"] = "Warning",
             ["Llm:Routing:classify"] = "fake",

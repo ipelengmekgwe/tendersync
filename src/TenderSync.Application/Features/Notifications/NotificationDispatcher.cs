@@ -56,7 +56,7 @@ public sealed class NotificationDispatcher(
                 deferred++;
             }
 
-            created.Add(Notification.Create(type, preference.Channel, preference.Address, rendered.Subject, rendered.Body, tenderId, companyProfileId, bucket, payload, notBefore));
+            created.Add(Notification.Create(type, preference.Channel, preference.Address, rendered.Subject, rendered.Body, tenderId, companyProfileId, bucket, payload, notBefore, preference.UserId));
         }
 
         if (created.Count == 0)

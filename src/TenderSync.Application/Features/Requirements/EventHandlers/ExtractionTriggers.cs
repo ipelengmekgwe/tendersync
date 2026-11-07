@@ -20,22 +20,28 @@ public sealed class ExtractWhenRequested(IPipelineScheduler scheduler, ILogger<E
 }
 
 /// <summary>
-/// The pipeline chain (PLAN.md §13): once the last document of a matched tender has text, extract its requirements.
-/// Runs on every DocumentTextExtracted event; enqueueing twice is harmless because the extractor replaces the rows.
+/// The pipeline chain (PLAN.md §13): once no document of a matched tender is still in flight and at least one has text,
+/// extract its requirements. Runs when a document gets its text and when one ends without text (failed or skipped), so
+/// whichever document finishes last triggers it. Enqueueing twice is harmless because the extractor replaces the rows.
 /// </summary>
 public sealed class ExtractWhenDocumentsAreReady(IAppDbContext db, IPipelineScheduler scheduler, ILogger<ExtractWhenDocumentsAreReady> logger)
-    : INotificationHandler<DomainEventNotification<DocumentTextExtracted>>
+    : INotificationHandler<DomainEventNotification<DocumentTextExtracted>>, INotificationHandler<DomainEventNotification<DocumentNotExtracted>>
 {
-    public async Task Handle(DomainEventNotification<DocumentTextExtracted> notification, CancellationToken cancellationToken)
+    public Task Handle(DomainEventNotification<DocumentTextExtracted> notification, CancellationToken cancellationToken) =>
+        CheckAsync(notification.Event.TenderId, cancellationToken);
+
+    public Task Handle(DomainEventNotification<DocumentNotExtracted> notification, CancellationToken cancellationToken) =>
+        CheckAsync(notification.Event.TenderId, cancellationToken);
+
+    private async Task CheckAsync(Guid tenderId, CancellationToken cancellationToken)
     {
-        var evt = notification.Event;
-        var matches = await db.TenderMatches.ListByTenderAsync(evt.TenderId, cancellationToken);
+        var matches = await db.TenderMatches.ListByTenderAsync(tenderId, cancellationToken);
         if (matches.Count == 0)
         {
             return;
         }
 
-        var tender = await db.Tenders.GetWithDetailsAsync(evt.TenderId, cancellationToken);
+        var tender = await db.Tenders.GetWithDetailsAsync(tenderId, cancellationToken);
         if (tender is null)
         {
             return;
@@ -45,6 +51,12 @@ public sealed class ExtractWhenDocumentsAreReady(IAppDbContext db, IPipelineSche
         if (pending > 0)
         {
             logger.LogDebug("Tender {Ocid} still has {Pending} document(s) in flight; extraction waits", tender.Ocid, pending);
+            return;
+        }
+
+        if (!tender.Documents.Any(d => d.Status == DocumentStatus.Extracted))
+        {
+            logger.LogWarning("No document of matched tender {Ocid} has text; requirement extraction cannot run until one is downloaded", tender.Ocid);
             return;
         }
 

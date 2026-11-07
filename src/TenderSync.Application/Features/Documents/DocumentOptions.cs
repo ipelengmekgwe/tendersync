@@ -14,7 +14,10 @@ public sealed class DocumentOptions
     /// <summary>Formats never downloaded (audio and video); the document is marked Skipped.</summary>
     public string[] SkippedFormats { get; set; } = ["mp3", "mp4", "wav", "m4a", "aac", "ogg", "flac", "wma", "avi", "mov", "wmv", "mkv", "webm"];
 
-    /// <summary>Hosts a document URL may point at. Empty allows any host. Feed URLs that fail this check are marked Skipped.</summary>
+    /// <summary>
+    /// Hosts a document URL, and every redirect it follows, may point at. Empty allows any public host. Feed URLs that fail
+    /// this check are marked Skipped.
+    /// </summary>
     public string[] AllowedDownloadHosts { get; set; } = ["www.etenders.gov.za", "etenders.gov.za"];
 
     [Range(1, 8)]
@@ -40,4 +43,22 @@ public sealed class DocumentOptions
 
     [Range(1, 10_000)]
     public int ZipMaxEntries { get; set; } = 500;
+
+    /// <summary>
+    /// Whether the downloader may fetch <paramref name="url"/>: http(s) and a host in <see cref="AllowedDownloadHosts"/>. With
+    /// an empty list, IP literals and localhost are still refused, so a feed URL or a redirect cannot reach the machine's
+    /// own network (metadata endpoints, internal services).
+    /// </summary>
+    public bool AllowsDownloadFrom(Uri url)
+    {
+        ArgumentNullException.ThrowIfNull(url);
+        if (!url.IsAbsoluteUri || url.Scheme is not ("http" or "https"))
+        {
+            return false;
+        }
+
+        return AllowedDownloadHosts.Length > 0
+            ? AllowedDownloadHosts.Contains(url.Host, StringComparer.OrdinalIgnoreCase)
+            : url.HostNameType == UriHostNameType.Dns && !url.IsLoopback;
+    }
 }

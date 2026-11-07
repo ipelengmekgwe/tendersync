@@ -45,7 +45,7 @@ public sealed class SendTestNotificationHandler(IAppDbContext db, ICurrentUser c
         };
         var rendered = templates.Render(NotificationType.Test, request.Channel, model);
         var payload = DomainJson.Serialize(new { actionUrl = options.Value.DashboardBaseUrl, actionLabel = "Open TenderSync" });
-        var notification = Notification.Create(NotificationType.Test, request.Channel, preference.Address, rendered.Subject, rendered.Body, null, null, now.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture), payload);
+        var notification = Notification.Create(NotificationType.Test, request.Channel, preference.Address, rendered.Subject, rendered.Body, null, null, now.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture), payload, recipientUserId: preference.UserId);
         db.Notifications.Add(notification);
         return new TestNotificationResponse(notification.Id, request.Channel, NotificationSender.Mask(preference.Address), rendered.Subject);
     }

@@ -38,7 +38,7 @@ public sealed class DocumentTextExtraction(
         var format = DocumentFormats.Normalise(Path.GetExtension(document.StoragePath)) ?? DocumentFormats.Normalise(document.Format);
         if (format is null || !extractor.Supports(format))
         {
-            document.MarkSkipped($"No text extractor for format '{format ?? "unknown"}'.");
+            document.MarkSkipped($"No text extractor for format '{format ?? "unknown"}'.", clock.UtcNow);
             await db.SaveChangesAsync(cancellationToken);
             return new DocumentExtractionResult(document.Id, document.Status, 0, 0, false, document.Error);
         }
@@ -52,7 +52,7 @@ public sealed class DocumentTextExtraction(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             var message = ex.Message.Length <= 2000 ? ex.Message : ex.Message[..2000];
-            document.MarkFailed($"Text extraction failed: {message}");
+            document.MarkFailed($"Text extraction failed: {message}", clock.UtcNow);
             await db.SaveChangesAsync(cancellationToken);
             logger.LogError(ex, "Text extraction of {DocumentId} ({Format}) failed", document.Id, format);
             return new DocumentExtractionResult(document.Id, document.Status, 0, 0, false, document.Error);

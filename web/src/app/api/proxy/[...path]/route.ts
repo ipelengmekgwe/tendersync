@@ -56,6 +56,11 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
       accessToken = refreshed.accessToken;
       upstream = await forward(request, path, accessToken, body);
     } catch (error) {
+      // 409: another request from this browser rotated the same refresh token a moment ago and set new cookies. The
+      // session is fine, so answer with something the query client retries (it never retries a 401) and keep the cookies.
+      if (error instanceof ApiError && error.problem.status === 409) {
+        return NextResponse.json({ title: "The session was just refreshed; retry." }, { status: 503, headers: { "retry-after": "1" } });
+      }
       const response = NextResponse.json({ title: "Session expired." }, { status: 401 });
       if (!(error instanceof ApiError) || error.problem.status === 401) {
         clearAuthCookies(response.cookies);

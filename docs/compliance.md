@@ -44,7 +44,7 @@ are met. It is not legal advice.
 | Data | Where it comes from | Where it is kept | Who can see it | Sent elsewhere? |
 |---|---|---|---|---|
 | User accounts: name, email, password hash, roles, sign-in times | The admin creates them | `users`, `refresh_tokens` (hashed tokens only) | Admins | No |
-| Notification addresses: email, Telegram chat id, Teams webhook, phone | Each user | `notification_preferences` (`[Sensitive]` on requests, masked in listings and logs) | The user; recipients are masked in notification listings and logs | Only to that channel's provider when a message is sent |
+| Notification addresses: email, Telegram chat id, Teams webhook, phone | Each user | `notification_preferences` (`[Sensitive]` on requests, masked in listings and logs) | The user, who sees only the notifications created from their own preferences; recipients are masked in listings and logs. Teams addresses must be Microsoft webhook URLs | Only to that channel's provider when a message is sent |
 | Buyer officials' enquiry contacts from bid packs | Requirement extraction (`ContactsV1`) | One requirement row, "Enquiries contact (internal use only)" | Signed-in users | **Never**: notifications, exports and reports leave them out |
 | Company key personnel (name, role, experience, summary) | Company profile | `company_profiles.capabilities_json` | Reviewers and Admins | To the model **by role only**, and only when `ShareKeyPersonnelWithModel` is on |
 | Company documents (registration, tax, B-BBEE, CVs…) | Uploaded by Admins | Encrypted (AES-256-GCM per file, master key in Key Vault or the environment) | Reviewers and Admins; every download is audited | Never sent to a model or a channel |

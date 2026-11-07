@@ -66,8 +66,8 @@ public class TenderDocumentTests
             TestSnapshots.Document(id: "d", title: "d.mp3"));
         var docs = tender.Documents.ToDictionary(d => d.ExternalId, StringComparer.Ordinal);
         docs["a"].MarkDownloaded("tenders/x/a.pdf", new string('a', 64), 10, Now);
-        docs["b"].MarkFailed("boom");
-        docs["d"].MarkSkipped("audio");
+        docs["b"].MarkFailed("boom", Now);
+        docs["d"].MarkSkipped("audio", Now);
         tender.ClearDomainEvents();
 
         var queued = tender.RequestDocumentDownload(Now);

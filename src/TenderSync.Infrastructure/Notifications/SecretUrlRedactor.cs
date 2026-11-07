@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using TenderSync.Application.Features.Notifications;
 
 namespace TenderSync.Infrastructure.Notifications;
 
@@ -9,8 +10,6 @@ namespace TenderSync.Infrastructure.Notifications;
 /// </summary>
 public static partial class SecretUrlRedactor
 {
-    private static readonly string[] WebhookHostSuffixes = [".webhook.office.com", ".logic.azure.com", ".powerplatform.com"];
-
     /// <summary>The URL to record instead, or null when <paramref name="uri"/> carries no secret in its path.</summary>
     public static string? Redact(Uri uri)
     {
@@ -25,7 +24,7 @@ public static partial class SecretUrlRedactor
             return $"{uri.GetLeftPart(UriPartial.Authority)}{TelegramToken().Replace(uri.AbsolutePath, "/bot***/")}";
         }
 
-        return WebhookHostSuffixes.Any(suffix => uri.Host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+        return TeamsWebhook.HostSuffixes.Any(suffix => uri.Host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
             ? $"{uri.GetLeftPart(UriPartial.Authority)}/***"
             : null;
     }

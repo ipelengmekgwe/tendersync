@@ -119,6 +119,11 @@ public class NotificationJobTests(WorkerFactory factory)
         rows.Should().AllSatisfy(r => r.Status.Should().Be(NotificationStatus.Pending));
         rows.Single(r => r.Channel == NotificationChannel.Email).Subject.Should().StartWith("New match: E");
         monitoring.EnqueuedCount(JobQueues.Notify).Should().BeGreaterThanOrEqualTo(before + 2);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var match = await scope.ServiceProvider.GetRequiredService<IAppDbContext>().TenderMatches.FindAsync(tenderId, profileId);
+            match!.NotifiedAt.Should().NotBeNull("the match records that its new-match message was queued");
+        }
 
         var email = factory.Channels[NotificationChannel.Email];
         var sentBefore = email.Sent.Count;

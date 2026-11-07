@@ -4,6 +4,10 @@ import { setAuthCookies } from "@/lib/auth/cookies";
 
 /** POST { email, password }: exchanges credentials with the API and stores the tokens in httpOnly cookies (ADR-011). */
 export async function POST(request: Request): Promise<NextResponse> {
+  // Only the login form's JSON fetch: a cross-site HTML form can only send form or text/plain bodies.
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+    return NextResponse.json({ title: "Send the credentials as JSON." }, { status: 415 });
+  }
   let body: { email?: string; password?: string };
   try {
     body = (await request.json()) as typeof body;

@@ -10,7 +10,7 @@ using TenderSync.Domain.Enums;
 
 namespace TenderSync.Application.Features.Notifications.Queries.ListMyNotifications;
 
-/// <summary>GET /notifications: messages addressed to any of the caller's preference addresses, newest first.</summary>
+/// <summary>GET /notifications: messages created from the caller's own preferences (recipient_user_id), newest first.</summary>
 [Authorize(Roles.Viewer)]
 public sealed record ListMyNotificationsQuery(NotificationStatus? Status = null, NotificationType? Type = null, int Page = 1, int PageSize = Paging.DefaultPageSize) : IQuery<PagedResult<NotificationDto>>;
 
@@ -29,7 +29,7 @@ public sealed class ListMyNotificationsHandler(IReadDb db, ICurrentUser currentU
         select n.id, n.type, n.channel, n.recipient, n.subject, n.body, n.status, n.attempts, n.sent_at, n.not_before, n.error, n.tender_id, n.created_at,
                count(*) over() as total_count
         from tendersync.notifications n
-        where lower(n.recipient) in (select lower(p.address) from tendersync.notification_preferences p where p.user_id = @userId)
+        where n.recipient_user_id = @userId
           and (@status::int is null or n.status = @status)
           and (@type::int is null or n.type = @type)
         order by n.created_at desc, n.id desc

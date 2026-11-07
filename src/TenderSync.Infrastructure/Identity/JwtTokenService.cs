@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using TenderSync.Application.Abstractions;
 using TenderSync.Application.Abstractions.Identity;
+using TenderSync.Application.Common.Exceptions;
 using TenderSync.Infrastructure.Persistence;
 
 namespace TenderSync.Infrastructure.Identity;
@@ -15,6 +16,9 @@ namespace TenderSync.Infrastructure.Identity;
 /// <summary>HMAC-SHA256 JWT access tokens plus rotating, hashed refresh tokens persisted in refresh_tokens.</summary>
 internal sealed class JwtTokenService(AppDbContext context, UserManager<ApplicationUser> userManager, IOptions<JwtOptions> options, IDateTimeProvider clock) : ITokenService
 {
+    /// <summary>How long after a rotation a second use of the old token counts as a concurrent refresh rather than a leak.</summary>
+    private static readonly TimeSpan RefreshReuseGrace = TimeSpan.FromSeconds(30);
+
     private readonly JwtOptions _options = options.Value;
 
     public async Task<TokenPair> IssueAsync(AuthenticatedUser user, string? ipAddress, CancellationToken cancellationToken = default)
@@ -42,7 +46,15 @@ internal sealed class JwtTokenService(AppDbContext context, UserManager<Applicat
 
         if (existing.IsRevoked)
         {
-            // Reuse of a rotated token means it leaked: revoke every active token for the user.
+            // Two requests from one browser can refresh the same token at the same moment (two tabs, or two API calls that
+            // both got a 401). Right after a rotation that is a race, not a leak: answer 409 so the dashboard keeps the new
+            // cookies the winning request set, and leave the family alone.
+            if (existing.ReplacedByTokenHash is not null && existing.RevokedAt > now - RefreshReuseGrace)
+            {
+                throw new ConflictException("This refresh token was rotated a moment ago; retry with the new one.");
+            }
+
+            // Reuse of a rotated token after that means it leaked: revoke every active token for the user.
             var family = await context.Set<RefreshToken>().Where(t => t.UserId == existing.UserId && t.RevokedAt == null).ToListAsync(cancellationToken);
             foreach (var token in family)
             {

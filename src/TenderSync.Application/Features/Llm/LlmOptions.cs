@@ -21,7 +21,11 @@ public sealed class LlmOptions
     [Range(0, 100_000)]
     public decimal DailyCostCapUsd { get; set; } = 10m;
 
-    /// <summary>PLAN.md §8.4: company documents may be sent to the provider. Default true for Anthropic; set false for unknown OpenAI-compatible endpoints.</summary>
+    /// <summary>
+    /// PLAN.md §8.4: whether company documents' content may be sent to a provider. No v1 feature sends them (qualification
+    /// sends profile facts only), so nothing reads this yet; the first feature that does (Phase 2 proposal generation) must
+    /// check it before building the request. Set false for OpenAI-compatible endpoints you do not control.
+    /// </summary>
     public bool AllowCompanyDocuments { get; set; } = true;
 
     /// <summary>

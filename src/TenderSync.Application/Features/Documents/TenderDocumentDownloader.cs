@@ -71,7 +71,7 @@ public sealed class TenderDocumentDownloader(
                 failed++;
                 var message = Truncate(ex.Message);
                 errors.Add($"{document.Title}: {message}");
-                document.MarkFailed(message);
+                document.MarkFailed(message, clock.UtcNow);
                 logger.LogError(ex, "Download of {Title} ({DocumentId}) for {Ocid} failed", document.Title, document.Id, tender.Ocid);
             }
 
@@ -88,20 +88,20 @@ public sealed class TenderDocumentDownloader(
 
         if (!Uri.TryCreate(document.Url, UriKind.Absolute, out var url) || url.Scheme is not ("http" or "https"))
         {
-            document.MarkSkipped("Document URL is not an absolute http(s) URL.");
+            document.MarkSkipped("Document URL is not an absolute http(s) URL.", clock.UtcNow);
             return DocumentStatus.Skipped;
         }
 
-        if (settings.AllowedDownloadHosts.Length > 0 && !settings.AllowedDownloadHosts.Contains(url.Host, StringComparer.OrdinalIgnoreCase))
+        if (!settings.AllowsDownloadFrom(url))
         {
-            document.MarkSkipped($"Host '{url.Host}' is not in Documents:AllowedDownloadHosts.");
+            document.MarkSkipped($"Host '{url.Host}' is not in Documents:AllowedDownloadHosts.", clock.UtcNow);
             return DocumentStatus.Skipped;
         }
 
         var declared = DocumentFormats.Normalise(document.Format, document.Title, url);
         if (declared is not null && settings.SkippedFormats.Contains(declared, StringComparer.OrdinalIgnoreCase))
         {
-            document.MarkSkipped($"Format '{declared}' is not downloaded (audio/video).");
+            document.MarkSkipped($"Format '{declared}' is not downloaded (audio/video).", clock.UtcNow);
             return DocumentStatus.Skipped;
         }
 
@@ -114,13 +114,13 @@ public sealed class TenderDocumentDownloader(
 
         if (format == DocumentFormats.Html)
         {
-            document.MarkFailed("The server returned an HTML page instead of the document.");
+            document.MarkFailed("The server returned an HTML page instead of the document.", clock.UtcNow);
             return DocumentStatus.Failed;
         }
 
         if (read == 0)
         {
-            document.MarkFailed("The server returned an empty body.");
+            document.MarkFailed("The server returned an empty body.", clock.UtcNow);
             return DocumentStatus.Failed;
         }
 

@@ -11,8 +11,9 @@ templates and the GitHub workflows.
 - Dependency vulnerabilities are covered separately by the CI gates (`dotnet list package --vulnerable`,
   `npm audit --omit=dev --audit-level=high`). Both were clean at the time of review.
 
-**Result:** no High findings and four Medium findings, all fixed in WP18. Of the 12 Low and Info findings, three are
-fixed and the rest are accepted with a reason or left as follow-up work.
+**Result:** no High findings and four Medium findings, all fixed in WP18. Of the 12 Low and Info findings, three were
+fixed in WP18 and seven on the follow-up branch (`fix/review-followups`). F9 is partly fixed, F13 is accepted for v1,
+and F14 is kept by decision.
 
 ## Checklist
 
@@ -37,18 +38,18 @@ fixed and the rest are accepted with a reason or left as follow-up work.
 | F2 | Medium | Open redirect: `/login?next=https://evil.example` (signed in) or `next=//evil.example` (after sign-in) left the site. | **Fixed.** `safeNextPath` (`web/src/lib/auth/redirect.ts`) accepts only same-site paths, and the middleware and login page use it. Test: `redirect.test.ts`. |
 | F3 | Medium | The Telegram bot token is part of the URL path. HttpClientFactory logs "Start processing HTTP request POST {uri}" at Information, so the token reached the console, Seq and Application Insights. | **Fixed.** Three changes: the Telegram, Teams and SMS clients have their request logging removed (`RemoveAllLoggers`); `System.Net.Http.HttpClient` logs at Warning in both hosts; and outgoing-call telemetry records those URLs redacted (`SecretUrlRedactor`). Test: `SecretUrlRedactorTests`. |
 | F4 | Medium | A fuzzy certification match from the model turned a mandatory requirement into Pass without checking the company held that certification. Wording planted in a bid document, or a hallucination, could raise the verdict. | **Fixed.** The match counts only when it names a certification on the profile, and that certification must still be valid when the bid closes (otherwise Expired). Anything else stays Unknown with the model's text as a hint. Test: `A_model_match_only_counts_for_a_certification_the_profile_holds_and_that_is_valid_at_closing`. |
-| F5 | Low | `GET /notifications` lists messages sent to any address a user has put in their own preferences. A Viewer could enter an Admin's email and read that Admin's notifications. | **Follow-up.** Store the recipient's user id on `notifications` and filter on it, or verify addresses before a preference becomes active. Risk is limited because accounts are created by an Admin for staff of one company (ADR-0016). |
-| F6 | Low | Teams webhook URLs are only required to be https, so the Worker will POST to any host, including internal ones (semi-blind SSRF). Test messages go to any address. | **Follow-up**, together with F5: an allowlist of Teams and Power Automate hosts, no stored response bodies, and a rate limit on `/notifications/test`. |
-| F7 | Low | The dashboard sets no security headers (CSP, frame-ancestors, nosniff, Referrer-Policy, HSTS). | **Follow-up.** It needs testing against react-pdf's worker and Next's inline scripts, so it ships as its own change with the e2e suite run. |
-| F8 | Low | `/api/auth/login` accepts a cross-site `text/plain` form (login CSRF), and `/api/auth/logout` can be triggered cross-site. | **Follow-up.** Require `content-type: application/json` and a matching `Origin` on state-changing `/api/auth/*` and `/api/proxy/*` requests. The proxy itself is protected by SameSite=Lax cookies. |
-| F9 | Low | The Hangfire dashboard cookie is set without `Secure` behind TLS termination, and the admin token travels in the query string once. | **Accepted for now.** The dashboard is not exposed on Azure by default (`exposeWorkerDashboard = false`) and is bound to 127.0.0.1 in Compose. **Follow-up** before exposing it: `Secure` always, and a one-time code instead of the token in the URL. |
+| F5 | Low | `GET /notifications` lists messages sent to any address a user has put in their own preferences. A Viewer could enter an Admin's email and read that Admin's notifications. | **Fixed (follow-up branch).** Each notification records the user whose preference created it (`recipient_user_id`), and `GET /notifications` filters on that, never on the address. The migration gives existing rows to the one user whose preference holds that channel and address; rows several users claim stay unassigned. Test: the claimed-address case in `A_test_message_is_queued_for_the_callers_channel_and_listed_with_a_masked_recipient`. |
+| F6 | Low | Teams webhook URLs are only required to be https, so the Worker will POST to any host, including internal ones (semi-blind SSRF). Test messages go to any address. | **Fixed (follow-up branch).** Teams addresses must be https on the default port at `*.webhook.office.com`, `*.logic.azure.com` or `*.powerplatform.com` (`TeamsWebhook`), checked when a preference is saved and again before every send. The remote response body is no longer logged or stored. `POST /notifications/test` is limited to 5 per minute per client (`RateLimiting:TestSend`). Test: `Teams_never_posts_to_a_host_outside_the_webhook_allowlist`. |
+| F7 | Low | The dashboard sets no security headers (CSP, frame-ancestors, nosniff, Referrer-Policy, HSTS). | **Fixed (follow-up branch)**, without script restrictions. Every response carries a CSP with `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'` and `object-src 'none'`, plus X-Frame-Options, nosniff, Referrer-Policy and Permissions-Policy (`web/next.config.ts`). The middleware adds HSTS when the request came over HTTPS. A `script-src` policy needs nonces for Next's inline scripts and the pdf.js worker; it remains follow-up work. |
+| F8 | Low | `/api/auth/login` accepts a cross-site `text/plain` form (login CSRF), and `/api/auth/logout` can be triggered cross-site. | **Fixed (follow-up branch).** The middleware refuses state-changing `/api/*` requests that `Sec-Fetch-Site` (or, failing that, `Origin`) marks as cross-site, with 403 (`web/src/lib/auth/csrf.ts`). `/api/auth/login` also requires a JSON body (415 otherwise), which an HTML form cannot send. Test: `csrf.test.ts`. |
+| F9 | Low | The Hangfire dashboard cookie is set without `Secure` behind TLS termination, and the admin token travels in the query string once. | **Partly fixed (follow-up branch).** The cookie is `Secure` everywhere except plain-http loopback, so it keeps the flag behind the Azure ingress. The Worker no longer logs request URLs, which carried the token, at Information in Development. **Still open** before exposing the dashboard: a one-time code instead of the token in the URL. |
 | F10 | Low | `RequestRedactor` serialised objects nested deeper than its walk in full, including any `[Sensitive]` property inside them. | **Fixed.** It walks 6 levels and replaces anything deeper with `***`. Test: `Objects_nested_deeper_than_the_walk_are_replaced_rather_than_serialised_in_full`. |
-| F11 | Low | The document downloader follows redirects without checking each hop against the host allowlist. | **Follow-up.** Turn off automatic redirects, follow them by hand with the allowlist, and reject IP literals and private ranges. Today the first URL must be on an eTenders host, and the metadata endpoints need headers the downloader never sends. |
+| F11 | Low | The document downloader follows redirects without checking each hop against the host allowlist. | **Fixed (follow-up branch).** The download client no longer follows redirects itself. `HttpDocumentDownloader` follows up to 5 and checks every hop with `DocumentOptions.AllowsDownloadFrom`. With an empty allowlist, IP literals and localhost are still refused. Tests: `A_redirect_off_the_allowed_hosts_is_refused_before_it_is_requested`, `Without_an_allowlist_ip_literals_and_localhost_are_still_refused`. |
 | F12 | Low | The tender id from the feed went into `SourceUrl` unencoded, and link values were not escaped in email and Telegram HTML. | **Fixed.** `Uri.EscapeDataString` in `ReleaseMapper`, and `html.escape` on every `href` value in the email and Telegram templates. The snapshots are unchanged because real ids are numeric. |
 | F13 | Low | PostgreSQL on Azure accepts connections from any Azure IP (`0.0.0.0` rule), and the apps sign in as the server admin. | **Accepted for v1**, as recorded in `docs/runbooks/azure.md` under "Hardening later": the password is 40 random characters and TLS is checked. **Follow-up:** VNet integration or Entra authentication with the managed identity, and a separate least-privilege app role. |
-| F14 | Info | `Llm:AllowCompanyDocuments` exists but nothing reads it. | **Follow-up:** remove it or enforce it in the LLM router. Company document files are never sent to a model; `docs/compliance.md` lists exactly what is sent. |
+| F14 | Info | `Llm:AllowCompanyDocuments` exists but nothing reads it. | **Kept by decision.** PLAN.md §8 makes the switch a rule: company documents reach a provider only when it is on. No v1 feature sends them (`docs/compliance.md` lists what is sent), so nothing reads it yet. The first feature that does (Phase 2 proposal generation) must check it; the option's comment now says so. |
 | F15 | Info | The anonymous `/health/ready` endpoints returned exception messages (hosts, addresses). | **Fixed.** Error text is returned only in Development. |
-| F16 | Info | Two refreshes at the same moment trip refresh-token reuse detection and sign the user out on every device. | **Follow-up:** a short grace window for the replaced token, or a single in-flight refresh in the proxy. |
+| F16 | Info | Two refreshes at the same moment trip refresh-token reuse detection and sign the user out on every device. | **Fixed (follow-up branch).** For 30 seconds after a rotation, a second use of the old token answers 409 and leaves the family alone; later reuse still revokes everything. The dashboard proxy turns that 409 into a retryable 503 and keeps the cookies the other request set. Test: `Refresh_rotates_the_token_and_reuse_of_the_old_one_is_rejected`. |
 
 **Also noted:**
 
@@ -64,14 +65,13 @@ fixed and the rest are accepted with a reason or left as follow-up work.
 These are correctness rather than security issues. They were found while tracing the flows for `docs/diagrams` and are
 recorded here so they are not lost.
 
-- **`TenderMatch.MarkNotified` is never called**, so `notified_at` is always empty. Notifications are deduplicated by
-  their own key, so nothing is sent twice. The column is simply unused.
-- **A document that fails after the others have been extracted can stall extraction.** `ExtractWhenDocumentsAreReady`
-  waits until no document is Pending or Downloaded, and a failed or skipped download raises no event, so the last check
-  can be missed. `POST /tenders/{id}/extract` recovers it. The fix is to raise an event (or request extraction) when a
-  download fails and the rest are done.
-- **Ingest and `ComputeStatusJob` use different closing-soon windows.** Ingest uses a fixed 7 days, `ComputeStatusJob`
-  uses `Status:ClosingSoonDays`. They agree while that setting is 7.
+- **`TenderMatch.MarkNotified` was never called**, so `notified_at` was always empty. **Fixed:** `NotifyOnNewMatch`
+  stamps the match once a new-match message is created or already exists.
+- **A document that failed after the others had text could stall extraction.** **Fixed:** `TenderDocument.MarkFailed`
+  and `MarkSkipped` raise `DocumentNotExtracted`, and `ExtractWhenDocumentsAreReady` runs the same readiness check for
+  it. It also waits until at least one document has text. Tests: `ExtractionTriggerTests`.
+- **Ingest and `ComputeStatusJob` used different closing-soon windows.** **Fixed:** `TenderIngestor` reads
+  `Status:ClosingSoonDays` too.
 
 ## Re-running the review
 
