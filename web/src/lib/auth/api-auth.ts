@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { forwardedHeaders } from "@/lib/api/forwarded";
 import { config } from "@/lib/config";
 import type { AuthResponse } from "@/lib/auth/cookies";
 
@@ -29,6 +31,7 @@ async function post<T>(path: string, body: unknown, accessToken?: string): Promi
     method: "POST",
     headers: {
       "content-type": "application/json",
+      ...forwardedHeaders(await headers()),
       ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
     },
     body: JSON.stringify(body),

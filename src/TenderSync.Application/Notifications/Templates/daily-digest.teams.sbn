@@ -10,3 +10,4 @@ TenderSync digest for {{ Date }}
 {{ for item in Qualified }}- [{{ item.BidNumber }}]({{ item.TenderUrl }}) {{ item.Title }} — closing {{ item.Closing }}{{ if item.Relevance }}, {{ item.Relevance }}/100{{ end }}
 {{ end }}{{ end }}
 {{ if NewMatches.size == 0 && ClosingSoon.size == 0 && Qualified.size == 0 }}Nothing new since yesterday.{{ end }}
+_Generated automatically. Verify against the source documents before acting._

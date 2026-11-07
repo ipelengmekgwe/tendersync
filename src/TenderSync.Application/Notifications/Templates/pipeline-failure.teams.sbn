@@ -2,3 +2,4 @@ TenderSync pipeline failure: {{ Source }}
 🚨 **Pipeline failure** · {{ Source }}
 {{ Message }}
 {{ Date }}
+_Generated automatically. Verify against the source documents before acting._

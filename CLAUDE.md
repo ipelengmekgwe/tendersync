@@ -76,6 +76,13 @@ If the architecture tests fail, fix the dependency, not the test.
   - **Blob store.** `DocumentStore:AzureBlob:ServiceUri` uses managed identity; `ConnectionString` stays for Azurite.
   - **Telemetry.** Application Insights is on only when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set (`TelemetryExtensions` in each host). It forwards Serilog events through the OpenTelemetry logger provider.
   - **Seq.** Seq is configured in `appsettings.Development.json` and Compose, not in the base `appsettings.json`.
+- Security (WP18, `docs/security-review.md` holds the checklist and open follow-ups):
+  - **Client addresses.** The API sees every call from the dashboard's server. The dashboard passes `X-Forwarded-For` (`web/src/lib/api/forwarded.ts`), and the API trusts it only from private networks (`TrustedProxyNetworks`). Rate limits and audit rows depend on this, so a new server-side call from `web/` to the API must forward it too. Sign-in has the `auth` limit; refresh, logout and `/me` have `auth-refresh`.
+  - **Redirects.** Any `next` parameter goes through `safeNextPath`.
+  - **Model output.** It never decides a hard fact on its own. A model answer that names something the company has (a certification) must be checked against the profile before it counts.
+  - **Secrets in URLs.** HttpClients whose URLs carry secrets (Telegram's token in the path, webhook URLs) are registered with `RemoveAllLoggers()`, and `SecretUrlRedactor` hides them in telemetry. Add new channel hosts there.
+  - **Redaction depth.** `RequestRedactor` replaces anything nested deeper than 6 levels with `***`.
+  - **Health output.** Readiness responses include exception text only in Development.
 - Domain entities have private setters and behaviour methods (`Tender.ApplyRelease(...)`), never public property bags. Domain events are plain records in `Domain/Events/`.
 - IDs are `Guid` v7 generated in Domain. Timestamps are `DateTimeOffset` in UTC. Display in SAST only at the edge.
 - Prompts are versioned markdown under `Application/Prompts/<purpose>/v<N>.md`; a change to a prompt bumps the version and must pass its eval.
@@ -96,7 +103,7 @@ If the architecture tests fail, fix the dependency, not the test.
 2. Read the WP section in PLAN.md §17.3 and the design sections it names. Implement only that scope.
 3. Keep `dotnet build` and `dotnet test` green. Run `docker compose` for integration tests.
 4. Open a PR whose description maps every acceptance criterion of the WP to the evidence (test name, screenshot, command output).
-5. Update `README.md` and `docs/` for anything new you introduced (settings, endpoints, jobs).
+5. Update `README.md` and `docs/` for anything new you introduced (settings, endpoints, jobs). A change to a pipeline flow, an entity or the deployment also updates `docs/diagrams` (check the Mermaid parses; `docs/diagrams/README.md`), and a new decision gets an ADR plus a row in `docs/adr/README.md`.
 
 ## Things agents get wrong here
 

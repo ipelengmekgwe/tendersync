@@ -30,4 +30,25 @@ public class RequestRedactorTests
         first.GetProperty("address").GetString().Should().Be(RequestRedactor.Redacted, "items of a list are walked too");
         first.GetProperty("types")[0].GetString().Should().Be("NewMatch");
     }
+
+    [Fact]
+    public void Objects_nested_deeper_than_the_walk_are_replaced_rather_than_serialised_in_full()
+    {
+        var deep = new Level(new Level(new Level(new Level(new Level(new Level(new Level(null, "level 6", "hunter2"), "level 5"), "level 4"), "level 3"), "level 2"), "level 1"), "level 0");
+
+        var text = RequestRedactor.ToJson(deep);
+        using var json = JsonDocument.Parse(text);
+
+        var node = json.RootElement;
+        for (var i = 0; i < 6; i++)
+        {
+            node.GetProperty("label").GetString().Should().Be($"level {i}");
+            node = node.GetProperty("inner");
+        }
+
+        node.GetString().Should().Be(RequestRedactor.Redacted, "the seventh level could carry a secret the walk never inspected");
+        text.Should().NotContain("hunter2");
+    }
+
+    private sealed record Level(Level? Inner, string Label, [property: Sensitive] string? Secret = null);
 }

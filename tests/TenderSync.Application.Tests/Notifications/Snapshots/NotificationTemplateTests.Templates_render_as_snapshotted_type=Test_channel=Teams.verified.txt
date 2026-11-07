@@ -3,3 +3,4 @@
 ✅ **TenderSync test**
 3 consecutive failures. Last error: HTTP 500 from /api/OCDSReleases
 If you can read this, the channel works.
+_Generated automatically. Verify against the source documents before acting._

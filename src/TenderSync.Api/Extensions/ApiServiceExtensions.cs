@@ -19,6 +19,10 @@ namespace TenderSync.Api.Extensions;
 public static class ApiServiceExtensions
 {
     public const string AuthRateLimitPolicy = "auth";
+    public const string RefreshRateLimitPolicy = "auth-refresh";
+
+    /// <summary>Private and loopback ranges: the dashboard container, the Compose network, the Container Apps ingress.</summary>
+    private static readonly string[] TrustedProxyNetworks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "127.0.0.0/8", "::1/128", "fc00::/7"];
 
     /// <summary>
     /// Cross-cutting API services: current user, errors, JWT auth, role policies, rate limiting, CORS, OpenAPI, health.
@@ -38,6 +42,18 @@ public static class ApiServiceExtensions
         services.Configure<ForwardedHeadersOptions>(options =>
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+            // Every call reaches the API through the dashboard's server, and on Azure through the Container Apps ingress
+            // first; both sit on private addresses. Trust X-Forwarded-For hops only from private networks and walk the
+            // chain to the first public address, so rate limits and audit rows see the browser rather than the dashboard
+            // container. A hop a client wrote itself sits left of the real address and is never reached.
+            options.ForwardLimit = null;
+            options.KnownProxies.Clear();
+            options.KnownIPNetworks.Clear();
+            foreach (var network in TrustedProxyNetworks)
+            {
+                options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+            }
         });
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -67,18 +83,12 @@ public static class ApiServiceExtensions
 
         services.AddRateLimiter(options =>
         {
-            var permitLimit = configuration.GetValue("RateLimiting:Auth:PermitLimit", 10);
-            var windowSeconds = configuration.GetValue("RateLimiting:Auth:WindowSeconds", 60);
-
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            options.AddPolicy(AuthRateLimitPolicy, context => RateLimitPartition.GetFixedWindowLimiter(
-                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = permitLimit,
-                    Window = TimeSpan.FromSeconds(windowSeconds),
-                    QueueLimit = 0,
-                }));
+            AddPerClientPolicy(options, AuthRateLimitPolicy, configuration.GetSection("RateLimiting:Auth"), defaultPermitLimit: 10);
+
+            // Refreshes are routine (every access token lives 15 minutes and every open tab refreshes), so they get their
+            // own, looser bucket instead of using up the sign-in attempts.
+            AddPerClientPolicy(options, RefreshRateLimitPolicy, configuration.GetSection("RateLimiting:Refresh"), defaultPermitLimit: 60);
         });
 
         services.AddCors(options => options.AddDefaultPolicy(policy =>
@@ -115,5 +125,20 @@ public static class ApiServiceExtensions
         services.AddSingleton<IPipelineScheduler, NoPipelineScheduler>();
 
         return services;
+    }
+
+    /// <summary>A fixed window per client address (after forwarded headers), sized from {section}:PermitLimit and WindowSeconds.</summary>
+    private static void AddPerClientPolicy(RateLimiterOptions options, string policy, IConfiguration section, int defaultPermitLimit)
+    {
+        var permitLimit = section.GetValue("PermitLimit", defaultPermitLimit);
+        var windowSeconds = section.GetValue("WindowSeconds", 60);
+        options.AddPolicy(policy, context => RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueLimit = 0,
+            }));
     }
 }

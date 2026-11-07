@@ -30,8 +30,30 @@ Settings → Rules → Rulesets → New branch ruleset, target `main`:
 
    Do not add the `Image (...)` checks: `docker.yml` only runs when image inputs change, and a required check that never
    runs blocks the pull request.
-4. **Require signed commits.** Commits here are signed with an SSH key (see the README's commit signing notes).
+4. **Require signed commits.** Commits here are signed with an SSH key (see [Commit signing](#commit-signing) below).
 5. Optional: **Require linear history** if you prefer squash merges. The history so far uses merge commits.
+
+## Commit signing
+
+Commits are signed with an SSH key that is also added to GitHub as a **Signing key** (Settings → SSH and GPG keys). Set
+it up once per clone:
+
+```bash
+git config gpg.format ssh
+```
+
+```bash
+git config user.signingkey ~/.ssh/id_ed25519.pub
+```
+
+```bash
+git config commit.gpgsign true
+```
+
+On Windows, start the OpenSSH Authentication Agent service, load the key with Windows' own `ssh-add`, and point Git at
+Windows' `ssh-keygen` (`git config gpg.ssh.program C:/Windows/System32/OpenSSH/ssh-keygen.exe`). Otherwise Git for
+Windows' bundled ssh cannot reach the agent. `git log --show-signature` checks signatures locally only when
+`gpg.ssh.allowedSignersFile` is set; GitHub shows "Verified" either way.
 
 ## Repository settings the workflows need
 

@@ -125,7 +125,7 @@ public sealed class TenderQualifier(
         // Step 1b: certification wording the rules could not match goes to the fast model.
         if (fuzzyCandidates.Count > 0)
         {
-            var fuzzy = await FuzzyMatchAsync(tender, profile, findings, fuzzyCandidates, settings, cancellationToken);
+            var fuzzy = await FuzzyMatchAsync(tender, profile, findings, fuzzyCandidates, validityPoint, settings, cancellationToken);
             cost += fuzzy.CostUsd;
             model ??= fuzzy.Model;
             questions.AddRange(fuzzy.Questions);
@@ -194,7 +194,7 @@ public sealed class TenderQualifier(
 
     private sealed record FuzzyResult(decimal CostUsd, string? Model, IReadOnlyList<HumanQuestion> Questions);
 
-    private async Task<FuzzyResult> FuzzyMatchAsync(Tender tender, CompanyProfile profile, List<QualificationFinding> findings, List<int> candidates, QualificationOptions settings, CancellationToken cancellationToken)
+    private async Task<FuzzyResult> FuzzyMatchAsync(Tender tender, CompanyProfile profile, List<QualificationFinding> findings, List<int> candidates, DateTimeOffset validityPoint, QualificationOptions settings, CancellationToken cancellationToken)
     {
         var prompt = prompts.Get(FuzzyPurpose);
         var sb = new StringBuilder();
@@ -231,10 +231,25 @@ public sealed class TenderQualifier(
             var index = candidates[match.RequirementIndex];
             var finding = findings[index];
             var confidence = (decimal)Math.Clamp(match.Confidence, 0, 1);
-            if (match.MatchedCertification is { } name && match.Confidence >= settings.FuzzyMatchMinConfidence)
+            if (match.MatchedCertification is { } suggested && match.Confidence >= settings.FuzzyMatchMinConfidence)
             {
-                findings[index] = finding with { Outcome = FindingOutcome.Pass, Detail = $"Model matched \"{name}\": {match.Reasoning}", Confidence = confidence };
-                questions.Add(new HumanQuestion($"Confirm that \"{name}\" satisfies: {finding.Requirement}", $"Matched by the model at {match.Confidence.ToString("0%", CultureInfo.InvariantCulture)} confidence, not by name.", finding.RequirementId));
+                // The model only judges whether two wordings name the same certification. Whether the company holds it,
+                // and whether it is valid at closing, stays a fact read from the profile: a name the profile does not
+                // list (a hallucination, or wording planted in the bid documents) leaves the requirement Unknown.
+                var certification = FindCertification(profile, suggested);
+                if (certification is null)
+                {
+                    findings[index] = finding with { Detail = $"{finding.Detail} The model named \"{suggested}\", which is not a certification on the profile." };
+                }
+                else if (certification.ExpiresAt is { } expires && expires <= validityPoint)
+                {
+                    findings[index] = finding with { Outcome = FindingOutcome.Expired, Detail = $"Model matched \"{certification.Name}\", which expires {RequirementEvaluators.Date(expires)}, before the bid closes: {match.Reasoning}", Confidence = confidence };
+                }
+                else
+                {
+                    findings[index] = finding with { Outcome = FindingOutcome.Pass, Detail = $"Model matched \"{certification.Name}\": {match.Reasoning}", Confidence = confidence };
+                    questions.Add(new HumanQuestion($"Confirm that \"{certification.Name}\" satisfies: {finding.Requirement}", $"Matched by the model at {match.Confidence.ToString("0%", CultureInfo.InvariantCulture)} confidence, not by name.", finding.RequirementId));
+                }
             }
             else
             {
@@ -243,6 +258,15 @@ public sealed class TenderQualifier(
         }
 
         return new FuzzyResult(result.CostUsd, result.Model, questions);
+    }
+
+    /// <summary>The profile certification the model named, compared after normalising; the model may append the issuer.</summary>
+    private static CompanyCertification? FindCertification(CompanyProfile profile, string name)
+    {
+        var wanted = CertificationEvaluator.Normalise(name);
+        return profile.Capabilities.Certifications.FirstOrDefault(c =>
+            CertificationEvaluator.Normalise(c.Name) == wanted
+            || (c.Issuer is { } issuer && CertificationEvaluator.Normalise($"{c.Name} {issuer}") == wanted));
     }
 
     private sealed record EstimateResult(decimal CostUsd, string Model, string PromptVersion, List<FunctionalityScore> Breakdown, int Score, string Assessment, IReadOnlyList<HumanQuestion> Questions);

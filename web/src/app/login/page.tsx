@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "@/app/login/login-form";
+import { safeNextPath } from "@/lib/auth/redirect";
 
 export const metadata = { title: "Sign in" };
 
@@ -13,7 +14,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <CardDescription>Sign in with the account an administrator created for you.</CardDescription>
         </CardHeader>
         <CardContent>
-          <LoginForm next={next && next.startsWith("/") ? next : "/"} />
+          <LoginForm next={safeNextPath(next)} />
         </CardContent>
       </Card>
     </main>

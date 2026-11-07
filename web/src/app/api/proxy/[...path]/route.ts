@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { ApiError, authApi } from "@/lib/auth/api-auth";
 import { ACCESS_COOKIE, REFRESH_COOKIE, clearAuthCookies, setAuthCookies } from "@/lib/auth/cookies";
+import { forwardedHeaders } from "@/lib/api/forwarded";
 import { config } from "@/lib/config";
 
 /**
@@ -15,7 +16,7 @@ const FORWARDED_RESPONSE_HEADERS = ["content-type", "content-disposition", "cont
 async function forward(request: NextRequest, path: string[], accessToken: string | null, body: ArrayBuffer | null): Promise<Response> {
   const target = new URL(`${config.apiBaseUrl}/api/v1/${path.map(encodeURIComponent).join("/")}`);
   target.search = request.nextUrl.search;
-  const headers = new Headers();
+  const headers = new Headers(forwardedHeaders(request.headers));
   for (const name of FORWARDED_REQUEST_HEADERS) {
     const value = request.headers.get(name);
     if (value) {
