@@ -20,6 +20,9 @@ public sealed class Notification : Entity
 
     public string Recipient { get; private set; } = null!;
 
+    /// <summary>The user whose preference produced this row. Listings filter on it, never on the address: anyone can type someone else's address into their own preferences.</summary>
+    public Guid? RecipientUserId { get; private set; }
+
     public Guid? TenderId { get; private set; }
 
     public Guid? CompanyProfileId { get; private set; }
@@ -48,7 +51,7 @@ public sealed class Notification : Entity
     public static string BuildDedupeKey(NotificationType type, NotificationChannel channel, string recipient, Guid? tenderId, Guid? companyProfileId, string? bucket = null) =>
         string.Join(':', type.ToString().ToLowerInvariant(), channel.ToString().ToLowerInvariant(), recipient.Trim().ToLowerInvariant(), tenderId?.ToString("N") ?? "-", companyProfileId?.ToString("N") ?? "-", bucket ?? "-");
 
-    public static Notification Create(NotificationType type, NotificationChannel channel, string recipient, string subject, string body, Guid? tenderId, Guid? companyProfileId, string? bucket = null, string? payloadJson = null, DateTimeOffset? notBefore = null)
+    public static Notification Create(NotificationType type, NotificationChannel channel, string recipient, string subject, string body, Guid? tenderId, Guid? companyProfileId, string? bucket = null, string? payloadJson = null, DateTimeOffset? notBefore = null, Guid? recipientUserId = null)
     {
         recipient = Guard.NotEmpty(recipient, nameof(recipient));
         return new Notification
@@ -57,6 +60,7 @@ public sealed class Notification : Entity
             Type = type,
             Channel = channel,
             Recipient = recipient,
+            RecipientUserId = recipientUserId,
             Subject = Guard.NotEmpty(subject, nameof(subject)),
             Body = Guard.NotEmpty(body, nameof(body)),
             TenderId = tenderId,

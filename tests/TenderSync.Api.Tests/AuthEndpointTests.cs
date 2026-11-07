@@ -2,8 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using TenderSync.Application.Features.Auth;
 using TenderSync.Application.Security;
+using TenderSync.Infrastructure.Identity;
+using TenderSync.Infrastructure.Persistence;
 
 namespace TenderSync.Api.Tests;
 
@@ -75,12 +79,26 @@ public class AuthEndpointTests(ApiFactory factory)
         var second = (await refreshed.Content.ReadFromJsonAsync<AuthResponse>())!;
         second.RefreshToken.Should().NotBe(first.RefreshToken);
 
+        // Straight after the rotation a second use is two requests racing: refused, but the new token stays valid.
+        var race = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = first.RefreshToken });
+        race.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var third = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = second.RefreshToken });
+        third.StatusCode.Should().Be(HttpStatusCode.OK, "a concurrent refresh must not sign the user out");
+        var current = (await third.Content.ReadFromJsonAsync<AuthResponse>())!;
+
+        // Later, reuse means the token leaked: it is rejected and the whole family is revoked.
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await context.Set<RefreshToken>()
+                .Where(t => t.RevokedAt != null)
+                .ExecuteUpdateAsync(set => set.SetProperty(t => t.RevokedAt, t => t.RevokedAt!.Value.AddMinutes(-5)));
+        }
+
         var reuse = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = first.RefreshToken });
         reuse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-
-        // Reuse revoked the whole family, so the rotated token is dead too.
-        var afterReuse = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = second.RefreshToken });
-        afterReuse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var afterReuse = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = current.RefreshToken });
+        afterReuse.StatusCode.Should().Be(HttpStatusCode.Unauthorized, "reuse revoked the whole family");
     }
 
     [Fact]

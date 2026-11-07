@@ -101,7 +101,24 @@ public class ChannelTests
 
         (await channel.SendAsync(Message with { Recipient = "http://insecure" })).Error.Should().Contain("https");
         var failing = new TeamsChannel(Factory(_ => new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("Webhook message deliver failed") }, []), NullLogger<TeamsChannel>.Instance);
-        (await failing.SendAsync(Message with { Recipient = "https://example.webhook.office.com/x" })).Error.Should().Contain("400");
+        var error = (await failing.SendAsync(Message with { Recipient = "https://example.webhook.office.com/x" })).Error;
+        error.Should().Contain("400").And.NotContain("deliver failed", "the remote body is never stored where the preference owner can read it");
+    }
+
+    [Theory]
+    [InlineData("https://ca-tendersync-dev-api.internal.example.azurecontainerapps.io/api/v1/admin/jobs")]
+    [InlineData("https://169.254.169.254/metadata/identity")]
+    [InlineData("https://example.webhook.office.com:8443/x")]
+    [InlineData("https://webhook.office.com.evil.example/x")]
+    public async Task Teams_never_posts_to_a_host_outside_the_webhook_allowlist(string recipient)
+    {
+        var requests = new List<CapturedRequest>();
+        var channel = new TeamsChannel(Factory(_ => new HttpResponseMessage(HttpStatusCode.OK), requests), NullLogger<TeamsChannel>.Instance);
+
+        var result = await channel.SendAsync(Message with { Recipient = recipient });
+
+        result.Success.Should().BeFalse();
+        requests.Should().BeEmpty();
     }
 
     [Fact]

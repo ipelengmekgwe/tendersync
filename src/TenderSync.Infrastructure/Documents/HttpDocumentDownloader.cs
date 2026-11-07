@@ -14,6 +14,7 @@ namespace TenderSync.Infrastructure.Documents;
 public sealed class HttpDocumentDownloader(IHttpClientFactory httpClientFactory, DownloadThrottle throttle, IOptions<DocumentOptions> options, ILogger<HttpDocumentDownloader> logger) : IDocumentDownloader
 {
     public const string ClientName = "etenders-download";
+    private const int MaxRedirects = 5;
 
     public async Task<DownloadedFile> DownloadAsync(Uri url, long maxBytes, CancellationToken cancellationToken = default)
     {
@@ -24,7 +25,7 @@ public sealed class HttpDocumentDownloader(IHttpClientFactory httpClientFactory,
         var ct = timeout.Token;
 
         var client = httpClientFactory.CreateClient(ClientName);
-        using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var response = await GetFollowingAllowedRedirectsAsync(client, url, ct);
         if (!response.IsSuccessStatusCode)
         {
             throw new DocumentDownloadException($"HTTP {(int)response.StatusCode} {response.ReasonPhrase} from {url.Host}.");
@@ -69,6 +70,38 @@ public sealed class HttpDocumentDownloader(IHttpClientFactory httpClientFactory,
         {
             await file.DisposeAsync();
             throw;
+        }
+    }
+
+    /// <summary>
+    /// The client does not follow redirects itself (AllowAutoRedirect is off in AddDocumentProcessing): every hop is checked
+    /// against <see cref="DocumentOptions.AllowsDownloadFrom"/>, so an allowed URL cannot bounce the Worker to another host.
+    /// </summary>
+    private async Task<HttpResponseMessage> GetFollowingAllowedRedirectsAsync(HttpClient client, Uri url, CancellationToken cancellationToken)
+    {
+        var current = url;
+        for (var hop = 0; ; hop++)
+        {
+            var response = await client.GetAsync(current, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if ((int)response.StatusCode is not (301 or 302 or 303 or 307 or 308))
+            {
+                return response;
+            }
+
+            var location = response.Headers.Location;
+            response.Dispose();
+            if (location is null || hop >= MaxRedirects)
+            {
+                throw new DocumentDownloadException(location is null ? $"Redirect from {current.Host} without a location." : $"More than {MaxRedirects} redirects from {url.Host}.");
+            }
+
+            var next = location.IsAbsoluteUri ? location : new Uri(current, location);
+            if (!options.Value.AllowsDownloadFrom(next))
+            {
+                throw new DocumentDownloadException($"Redirect to '{next.Host}' is not allowed (Documents:AllowedDownloadHosts).");
+            }
+
+            current = next;
         }
     }
 

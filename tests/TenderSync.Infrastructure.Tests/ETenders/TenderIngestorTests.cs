@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using TenderSync.Application.Abstractions;
 using TenderSync.Application.Abstractions.Persistence;
 using TenderSync.Application.Features.Ingest;
+using TenderSync.Application.Features.Status;
 using TenderSync.Domain.Common;
 using TenderSync.Domain.Enums;
 using TenderSync.Domain.Events;
@@ -34,6 +36,7 @@ public class TenderIngestorTests(PostgresFixture fixture)
             source,
             scope.ServiceProvider.GetRequiredService<IAppDbContext>(),
             scope.ServiceProvider.GetRequiredService<IMunicipalityLookup>(),
+            Options.Create(new StatusOptions()),
             scope.ServiceProvider.GetRequiredService<IDateTimeProvider>(),
             NullLogger<TenderIngestor>.Instance);
 

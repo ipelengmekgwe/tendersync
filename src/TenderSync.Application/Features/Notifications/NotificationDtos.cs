@@ -28,7 +28,7 @@ public sealed partial class NotificationPreferenceInputValidator : AbstractValid
         RuleFor(p => p.Address).NotEmpty().MaximumLength(1024);
         RuleFor(p => p.Address).Must(a => EmailPattern().IsMatch(a)).When(p => p.Channel == NotificationChannel.Email).WithMessage("Email address is not valid.");
         RuleFor(p => p.Address).Must(a => ChatIdPattern().IsMatch(a)).When(p => p.Channel == NotificationChannel.Telegram).WithMessage("Telegram address is the numeric chat id (or @channel).");
-        RuleFor(p => p.Address).Must(a => Uri.TryCreate(a, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps).When(p => p.Channel == NotificationChannel.Teams).WithMessage("Teams address is the https incoming-webhook URL.");
+        RuleFor(p => p.Address).Must(TeamsWebhook.IsAllowed).When(p => p.Channel == NotificationChannel.Teams).WithMessage("Teams address is the https webhook URL from Teams or Power Automate (*.webhook.office.com, *.logic.azure.com, *.powerplatform.com).");
         RuleFor(p => p.Address).Must(a => PhonePattern().IsMatch(a)).When(p => p.Channel is NotificationChannel.Sms or NotificationChannel.WhatsApp).WithMessage("Phone numbers are E.164 (+27821234567).");
         RuleFor(p => p.Types).NotNull();
         RuleFor(p => p.QuietHours!.Start).Matches("^([01]\\d|2[0-3]):[0-5]\\d$").When(p => p.QuietHours is not null).WithMessage("Quiet hours start is HH:mm.");

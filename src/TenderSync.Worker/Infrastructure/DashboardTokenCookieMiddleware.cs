@@ -19,7 +19,9 @@ internal sealed class DashboardTokenCookieMiddleware(RequestDelegate next)
             context.Response.Cookies.Append(CookieName, token!, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = context.Request.IsHttps,
+                // Behind a TLS-terminating ingress the request reaches the Worker as http, so IsHttps alone would drop the
+                // Secure flag exactly where it matters. Only plain-http loopback (local development) goes without it.
+                Secure = context.Request.IsHttps || !IsLoopback(context.Request.Host.Host),
                 SameSite = SameSiteMode.Strict,
                 Path = WorkerAppExtensions.DashboardPath,
                 MaxAge = TimeSpan.FromHours(8),
@@ -32,4 +34,7 @@ internal sealed class DashboardTokenCookieMiddleware(RequestDelegate next)
 
         await next(context);
     }
+
+    private static bool IsLoopback(string host) =>
+        host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || (System.Net.IPAddress.TryParse(host, out var address) && System.Net.IPAddress.IsLoopback(address));
 }

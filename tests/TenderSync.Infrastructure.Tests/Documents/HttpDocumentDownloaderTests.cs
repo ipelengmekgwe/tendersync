@@ -57,6 +57,50 @@ public class HttpDocumentDownloaderTests
     }
 
     [Fact]
+    public async Task Redirects_within_the_allowed_hosts_are_followed()
+    {
+        var target = new Uri("https://etenders.gov.za/files/abc.pdf");
+        var sut = Sut(request => request.RequestUri == Url
+            ? new HttpResponseMessage(HttpStatusCode.Found) { Headers = { Location = target } }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(SampleFiles.Pdf("moved")) });
+
+        await using var file = await sut.DownloadAsync(Url, 10 * 1024 * 1024);
+
+        file.Length.Should().BeGreaterThan(0);
+    }
+
+    [Theory]
+    [InlineData("http://169.254.169.254/metadata/identity/oauth2/token")]
+    [InlineData("http://localhost:5000/api/v1/admin/jobs")]
+    [InlineData("https://evil.example/payload.pdf")]
+    public async Task A_redirect_off_the_allowed_hosts_is_refused_before_it_is_requested(string location)
+    {
+        var requested = new List<Uri>();
+        var sut = Sut(request =>
+        {
+            requested.Add(request.RequestUri!);
+            return new HttpResponseMessage(HttpStatusCode.Redirect) { Headers = { Location = new Uri(location) } };
+        });
+
+        var act = () => sut.DownloadAsync(Url, 1024);
+
+        (await act.Should().ThrowAsync<DocumentDownloadException>()).WithMessage("Redirect to*not allowed*");
+        requested.Should().Equal(Url);
+    }
+
+    [Fact]
+    public void Without_an_allowlist_ip_literals_and_localhost_are_still_refused()
+    {
+        var open = new DocumentOptions { AllowedDownloadHosts = [] };
+
+        open.AllowsDownloadFrom(new Uri("https://cdn.example.org/a.pdf")).Should().BeTrue();
+        open.AllowsDownloadFrom(new Uri("http://10.0.0.4/a.pdf")).Should().BeFalse();
+        open.AllowsDownloadFrom(new Uri("http://[::1]/a.pdf")).Should().BeFalse();
+        open.AllowsDownloadFrom(new Uri("http://localhost/a.pdf")).Should().BeFalse();
+        open.AllowsDownloadFrom(new Uri("ftp://cdn.example.org/a.pdf")).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Bodies_over_the_cap_are_rejected_by_header_or_while_streaming()
     {
         var big = new byte[2048];

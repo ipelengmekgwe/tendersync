@@ -20,6 +20,7 @@ public static class ApiServiceExtensions
 {
     public const string AuthRateLimitPolicy = "auth";
     public const string RefreshRateLimitPolicy = "auth-refresh";
+    public const string TestSendRateLimitPolicy = "notification-test";
 
     /// <summary>Private and loopback ranges: the dashboard container, the Compose network, the Container Apps ingress.</summary>
     private static readonly string[] TrustedProxyNetworks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "127.0.0.0/8", "::1/128", "fc00::/7"];
@@ -89,6 +90,10 @@ public static class ApiServiceExtensions
             // Refreshes are routine (every access token lives 15 minutes and every open tab refreshes), so they get their
             // own, looser bucket instead of using up the sign-in attempts.
             AddPerClientPolicy(options, RefreshRateLimitPolicy, configuration.GetSection("RateLimiting:Refresh"), defaultPermitLimit: 60);
+
+            // A test message goes to whatever address the caller typed in, through the company's SMTP server or bot, so it
+            // must not become a way to send mail in bulk.
+            AddPerClientPolicy(options, TestSendRateLimitPolicy, configuration.GetSection("RateLimiting:TestSend"), defaultPermitLimit: 5);
         });
 
         services.AddCors(options => options.AddDefaultPolicy(policy =>

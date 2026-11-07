@@ -84,8 +84,8 @@ classDiagram
     +bool NeedsOcr
     +MarkDownloaded(path, sha256, size, now)
     +MarkExtracted(pageCount, needsOcr, now)
-    +MarkFailed(error)
-    +MarkSkipped(reason)
+    +MarkFailed(error, now)
+    +MarkSkipped(reason, now)
   }
   class DocumentText {
     +Guid DocumentId
@@ -159,6 +159,8 @@ Events raised here:
 - **`TenderDocumentsRequested`, `TenderExtractionRequested`, `RequirementsExtracted` and
   `TenderQualificationRequested`:** pipeline hand-offs.
 - **`DocumentTextExtracted`:** a document's text is stored.
+- **`DocumentNotExtracted`:** a document failed or was skipped. Extraction readiness is checked on both events, so the
+  last document to finish starts requirement extraction either way.
 - **`PipelineFailure`:** raised by `SourceHealthCheck.Record` when a check fails or the schema drifts.
 
 ## Classification and matching
@@ -441,6 +443,7 @@ classDiagram
     +NotificationType Type
     +NotificationChannel Channel
     +string Recipient
+    +Guid? RecipientUserId
     +Guid? TenderId
     +Guid? CompanyProfileId
     +string Subject

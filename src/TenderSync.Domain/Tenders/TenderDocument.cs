@@ -114,15 +114,17 @@ public sealed class TenderDocument : Entity
         Raise(new DocumentTextExtracted(TenderId, Id, pageCount, needsOcr, now));
     }
 
-    public void MarkFailed(string error)
+    public void MarkFailed(string error, DateTimeOffset now)
     {
         Status = DocumentStatus.Failed;
         Error = Guard.NotEmpty(error, nameof(error));
+        Raise(new DocumentNotExtracted(TenderId, Id, Status, Error, now));
     }
 
-    public void MarkSkipped(string reason)
+    public void MarkSkipped(string reason, DateTimeOffset now)
     {
         Status = DocumentStatus.Skipped;
         Error = Guard.NotEmpty(reason, nameof(reason));
+        Raise(new DocumentNotExtracted(TenderId, Id, Status, Error, now));
     }
 }

@@ -52,6 +52,8 @@ public static class DocumentServiceExtensions
                 client.DefaultRequestHeaders.UserAgent.ParseAdd(ETendersServiceExtensions.UserAgent);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
             })
+            // HttpDocumentDownloader follows redirects itself so each hop passes the host allowlist.
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
             .AddResilienceHandler(DownloadResiliencePipelineName, (builder, context) =>
             {
                 var options = context.ServiceProvider.GetRequiredService<IOptions<DocumentOptions>>().Value;

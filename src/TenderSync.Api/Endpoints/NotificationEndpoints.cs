@@ -1,4 +1,5 @@
 using MediatR;
+using TenderSync.Api.Extensions;
 using TenderSync.Api.Security;
 using TenderSync.Application.Common.Models;
 using TenderSync.Application.Features.Notifications;
@@ -30,6 +31,7 @@ public static class NotificationEndpoints
         notifications.MapPost("/test", async (TestRequest request, ISender sender, CancellationToken ct) =>
                 TypedResults.Accepted((string?)null, await sender.Send(new SendTestNotificationCommand(request.Channel), ct)))
             .WithSummary("Queues a test message to the caller's address on the channel; the Worker delivers it within about a minute.")
+            .RequireRateLimiting(ApiServiceExtensions.TestSendRateLimitPolicy)
             .Produces<TestNotificationResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);

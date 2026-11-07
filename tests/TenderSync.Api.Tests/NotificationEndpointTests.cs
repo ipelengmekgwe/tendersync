@@ -90,5 +90,9 @@ public class NotificationEndpointTests(ApiFactory factory)
 
         using var viewer = await factory.CreateViewerClientAsync();
         (await viewer.GetFromJsonAsync<PagedResult<NotificationDto>>($"/api/v1/notifications?type={(int)NotificationType.Test}", Json))!.Items.Should().NotContain(n => n.Id == queued.NotificationId, "another user's address");
+
+        // Claiming the admin's chat id in your own preferences must not reveal the admin's messages.
+        (await viewer.PutAsJsonAsync("/api/v1/notification-preferences", new[] { new NotificationPreferenceInput(NotificationChannel.Telegram, "987654", [NotificationType.Test]) }, Json)).EnsureSuccessStatusCode();
+        (await viewer.GetFromJsonAsync<PagedResult<NotificationDto>>($"/api/v1/notifications?type={(int)NotificationType.Test}", Json))!.Items.Should().NotContain(n => n.Id == queued.NotificationId, "listings follow the user who owns the preference, not the address");
     }
 }

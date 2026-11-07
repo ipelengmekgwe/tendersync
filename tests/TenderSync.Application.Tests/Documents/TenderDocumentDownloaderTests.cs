@@ -101,7 +101,7 @@ public class TenderDocumentDownloaderTests
         var failed = DocumentTestData.Document("failed", "Failed.pdf", "pdf");
         var tender = DocumentTestData.TenderWith(done, failed);
         tender.Documents.Single(d => d.ExternalId == "done").MarkDownloaded("tenders/x/done.pdf", new string('a', 64), 1, DocumentTestData.Now);
-        tender.Documents.Single(d => d.ExternalId == "failed").MarkFailed("earlier timeout");
+        tender.Documents.Single(d => d.ExternalId == "failed").MarkFailed("earlier timeout", DocumentTestData.Now);
         _downloader.Returns(failed.Url, DocumentTestData.PdfBytes);
 
         var summary = await Sut(tender).DownloadAsync(tender.Id);

@@ -635,6 +635,10 @@ namespace TenderSync.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(512)")
                         .HasColumnName("recipient");
 
+                    b.Property<Guid?>("RecipientUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_user_id");
+
                     b.Property<DateTimeOffset?>("SentAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("sent_at");
@@ -670,6 +674,9 @@ namespace TenderSync.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenderId")
                         .HasDatabaseName("ix_notifications_tender_id");
+
+                    b.HasIndex("RecipientUserId", "CreatedAt")
+                        .HasDatabaseName("ix_notifications_recipient_user_id_created_at");
 
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_notifications_status_created_at");

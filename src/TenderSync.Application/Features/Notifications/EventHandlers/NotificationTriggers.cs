@@ -32,7 +32,15 @@ public sealed class NotifyOnNewMatch(IAppDbContext db, NotificationModelBuilder 
         var model = await models.ForTenderAsync(NotificationType.NewMatch, tender, profile, now, cancellationToken);
         model.Relevance ??= evt.Relevance;
         var urgent = tender.ClosingAt is { } closing && closing <= now.AddDays(options.Value.UrgentClosingDays);
-        await dispatcher.DispatchAsync(NotificationType.NewMatch, model, tender.Id, evt.CompanyProfileId, null, urgent, cancellationToken);
+        var result = await dispatcher.DispatchAsync(NotificationType.NewMatch, model, tender.Id, evt.CompanyProfileId, null, urgent, cancellationToken);
+
+        // Record on the match that someone was told (a deduplicated row means an earlier run already told them). The
+        // outbox saves after the handlers, so the stamp lands with the processed message.
+        if (result.Created + result.Deduplicated > 0
+            && await db.TenderMatches.FindAsync(evt.TenderId, evt.CompanyProfileId, cancellationToken) is { } match)
+        {
+            match.MarkNotified(now);
+        }
     }
 }
 

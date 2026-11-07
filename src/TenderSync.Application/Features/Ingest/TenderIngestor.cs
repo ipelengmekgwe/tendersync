@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TenderSync.Application.Abstractions;
 using TenderSync.Application.Abstractions.Persistence;
 using TenderSync.Application.Abstractions.Sources;
+using TenderSync.Application.Features.Status;
 using TenderSync.Domain.Enums;
 using TenderSync.Domain.Geography;
 using TenderSync.Domain.Tenders;
@@ -38,8 +40,11 @@ public sealed record IngestSummary(
 /// change detection, status derivation, one transaction per tender so the outbox rows travel with the change.
 /// Idempotent: replaying a window creates no rows and raises no events.
 /// </summary>
-public sealed class TenderIngestor(ITenderSource source, IAppDbContext db, IMunicipalityLookup municipalities, IDateTimeProvider clock, ILogger<TenderIngestor> logger)
+public sealed class TenderIngestor(ITenderSource source, IAppDbContext db, IMunicipalityLookup municipalities, IOptions<StatusOptions> statusOptions, IDateTimeProvider clock, ILogger<TenderIngestor> logger)
 {
+    /// <summary>The same closing-soon window ComputeStatusJob uses, so a tender's status does not depend on which job saw it last.</summary>
+    private TimeSpan ClosingSoonWindow => TimeSpan.FromDays(statusOptions.Value.ClosingSoonDays);
+
     public async Task<IngestSummary> IngestWindowAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default)
     {
         int fetched = 0, created = 0, changed = 0, unchanged = 0, failed = 0;
@@ -106,14 +111,14 @@ public sealed class TenderIngestor(ITenderSource source, IAppDbContext db, IMuni
         if (tender is null)
         {
             tender = Tender.CreateFromSnapshot(snapshot, buyer.Id, resolution.Province, source.Kind, now);
-            tender.DeriveStatus(now);
+            tender.DeriveStatus(now, ClosingSoonWindow);
             db.Tenders.Add(tender);
             outcome = IngestOutcome.Created;
         }
         else
         {
             var diff = tender.ApplyRelease(snapshot, resolution.Province, now);
-            tender.DeriveStatus(now);
+            tender.DeriveStatus(now, ClosingSoonWindow);
             outcome = diff.HasChanges ? IngestOutcome.Changed : IngestOutcome.Unchanged;
         }
 
