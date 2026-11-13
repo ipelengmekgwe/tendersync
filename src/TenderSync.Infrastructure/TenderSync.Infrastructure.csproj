@@ -29,6 +29,7 @@
     <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Azure.Security.KeyVault.Keys" />
     <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Scriban" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Persistence/Seed/za-municipalities.csv" LogicalName="TenderSync.Infrastructure.Persistence.Seed.za-municipalities.csv" />
