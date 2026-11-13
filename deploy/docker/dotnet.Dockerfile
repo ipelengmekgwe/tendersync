@@ -5,7 +5,7 @@
 #   migrate - the Worker image running --migrate-seed once (migrations + reference data), then exiting
 # Build from the repository root:  docker build -f deploy/docker/dotnet.Dockerfile --target api -t tendersync-api .
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 # global.json is left out on purpose: it pins the local SDK feature band, and the image's SDK may be newer or older.
 COPY Directory.Build.props Directory.Build.targets Directory.Packages.props .editorconfig ./
