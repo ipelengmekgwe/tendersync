@@ -21,7 +21,7 @@ COPY src/ src/
 RUN dotnet publish src/TenderSync.Api/TenderSync.Api.csproj -c Release -o /out/api --no-restore -p:UseAppHost=false \
  && dotnet publish src/TenderSync.Worker/TenderSync.Worker.csproj -c Release -o /out/worker --no-restore -p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     DOTNET_RUNNING_IN_CONTAINER=true \
     DocumentStore__FileSystem__RootPath=/data/documents
